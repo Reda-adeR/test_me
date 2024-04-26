@@ -61,25 +61,10 @@ int checkUrirPath( std::string &str )
         }
         std::string s = rPath;
         std::string pwd = rPwd;
-        // std::vector<std::string> vc = split_uri( s );
-        // std::vector<std::string> vcPwd = split_uri( pwd );
         if ( s == rPwd )
             return 0;
-        // if ( (vc.size() == vcPwd.size() && vc.back() == vcPwd.back())
-        //     || (vc.size() > vcPwd.size() && vc[vcPwd.size() - 1] == vcPwd.back())
-        //     || (vc.size() < vcPwd.size()) )
-        //     return 0;
-        // if ( vc.size() >= 3 && vcPwd.size() >= 3 )
-        // {
-        //     for ( int i = 0 ; i < 3 ; i++ )
-        //         if ( vc[i] != vcPwd[i] )
-        //             return 0;
-        // }
-        // else
-        //     return 0;
         return 1;
     }
-    std::cerr << "go from here" << std::endl;
     return 1;
 }
 
@@ -132,22 +117,6 @@ void    ReqHandler::reqStrToVec( std::string &line )
         req.push_back( word );
 }
 
-// void    ReqHandler::uri_depon_cs( int code )
-// {
-//     std::map<int, std::string>::iterator it = myServ.errorpage.find( code );
-//     request.status = code;
-//     endOfRead = 1;
-//     if ( it != myServ.errorpage.end() )
-//     {
-//         request.uri = it->second;
-//     }
-//     else
-//     {
-//         request.uri = myServ.defErrP[ code ];
-//     }
-//     std::cerr << request.uri << std::endl;
-// }
-
 void    ReqHandler::uri_depon_cs( int code )
 {
     std::map<int, std::string> defErrP;
@@ -166,6 +135,7 @@ void    ReqHandler::uri_depon_cs( int code )
     defErrP[415] = "../../Desktop/webServ2.6/errPages/err415.html";
     defErrP[500] = "../../Desktop/webServ2.6/errPages/err500.html";
     defErrP[501] = "../../Desktop/webServ2.6/errPages/err501.html";
+    defErrP[505] = "../../Desktop/webServ2.6/errPages/err505.html";
     std::map<int, std::string>::iterator it = myServ.errorpage.find( code );
     request.status = code;
     endOfRead = 1;

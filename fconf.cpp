@@ -47,13 +47,8 @@ int    alNumStr( std::string &str )
 int numParse( std::string num )
 {
     for ( int i = 0 ; num[i] ; i++ )
-    {
         if ( !std::isdigit( num[i] ) )
-        {
-            std::cerr << "-1 is returned here" << std::endl;
             return (-1);
-        }
-    }
     return ( std::atoi( num.c_str() ) );
 }
 
@@ -72,11 +67,12 @@ std::vector<std::string> split_uri( std::string &str )
     return ret;
 }
 
-bool isDirectory(const std::string& path) {
+bool isDirectory(const std::string& path)
+{
     struct stat statResult;
     if ( stat(path.c_str(), &statResult) == 0 )
         return S_ISDIR(statResult.st_mode);
-    return false;  // Error occurred or file doesn't exist
+    return false;
 }
 
 int     Fconf::serverDupCheck( Serv &myserv )
@@ -305,7 +301,6 @@ Fconf::Fconf ( const char *file )
     getData( configf );
     for ( size_t i = 0 ; i < myServers.size() ; i++ )
     {
-        // pathsOtherChecks( myServers[i] );
         for ( size_t j = 0 ; j < myServers[i].locations.size() ; j++ )
         {
             dontGoBeforeMe( myServers[i].root,

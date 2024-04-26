@@ -3,11 +3,10 @@
 #define MULTIPLEX_HPP
 
 #include <netinet/in.h>
-#include <arpa/inet.h> // For inet_addr()
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include "reqHandler.hpp"
-// #include "fconf.hpp"
 #include <unistd.h>
 #include <fcntl.h>
 #include <map>
@@ -21,14 +20,15 @@ class MultiPlexer {
     public:
         MultiPlexer( std::vector<Serv> &servers );
         ~MultiPlexer();
-        // void    addSockToEpollInOnly( int &sockToAdd );
+        std::vector<Serv>    getServBySock( int sock, std::vector<Serv> &servers );
         void    addSockToEpoll( int sockToAdd );
         void    delSockFrEpoll( int sockToDel );
         void    webServLoop( std::vector<Serv> &servers );
-        std::vector<Serv>    getServBySock( int sock, std::vector<Serv> &servers );
-        // Serv    getServBySock( int sock, std::vector<Serv> &servers );
+        void    acceptCli( int fd, std::vector<Serv> &servers, std::map<int, ReqHandler*> &reqMap );
         int     existentSockForPort( int &nport );
         int     isFdServer( int fd );
+        int     spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &reqMap );
+        int     spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &resMap, std::map<int, ReqHandler*> &reqMap );
 };
 
 #endif

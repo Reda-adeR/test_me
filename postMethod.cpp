@@ -31,7 +31,6 @@ std::string ReqHandler::fNameGenerator()
     std::string s = "abcdefghijklmnopqrstuvwxyzZYXWVUTSRQPONMLKJIHGFEDCBA0123456789";
     int         sSize = sizeof(s) - 1;
     
-    // std::string ret;
     srand( static_cast<unsigned int>(time(0)));
     for ( int i = 0 ; i < 30 ; i++ )
         fName.push_back( s[rand() % sSize]);
@@ -50,12 +49,6 @@ void    ReqHandler::pFileOpener()
     if ( bodyStartFound )
     {
         std::string fName = fNameGenerator();
-        std::cout << "fName : " << fName << std::endl;
-        // if (chmod(fName.c_str(), S_IWUSR) == -1)
-        // {
-        //     std::cerr << "Failed to set file permissions." << std::endl;
-        // }
-        // umask(0);
         pFile.open( fName.c_str(), std::ios::out | std::ios::binary );
         if ( !pFile.is_open() )
         {
@@ -95,7 +88,6 @@ void    ReqHandler::deleteFile()
 
 int ReqHandler::iStillValid()
 {
-    // std::cerr << fName << std::endl;
     if (access(fName.c_str(), F_OK) != 0)
     {
         std::cerr << "File does not exist." << std::endl;
@@ -112,12 +104,11 @@ int ReqHandler::iStillValid()
 
 void        ReqHandler::cLenght_post( std::string &str )
 {
-    // Bytes_red // content lenght // limit // str.size()
     if ( !iStillValid() )
         return ( uri_depon_cs( 409 ) );
     std::cout << "str.size() in cLenght POST : " << str.size() << std::endl;
 
-    unsigned long old_bytes_red = bytes_red;
+    unsigned long long old_bytes_red = bytes_red;
     bytes_red += str.size();
     std::cout << "          ++++++++++++++" << std::endl;
     std::cout << "cont_len = " << content_lenght << std::endl;
@@ -144,24 +135,15 @@ void        ReqHandler::cLenght_post( std::string &str )
         request.uri = "../../Desktop/webServ2.6/success.html";
     }
 }
-// #include <unistd.h> // For access() function
 
 void        ReqHandler::tChunked_post( std::string &str )
 {
     while ( 50 )
     {
-        // std::cout << "hh" << std::endl;
-        // std::cout << "| | |" << str  << "| | |" << std::endl;
-        // if ( rest.size() )
-        // {
-        //     str = rest + str;
-        //     rest.clear();
-        // }
         if ( !iStillValid() )
             return ( uri_depon_cs( 409 ) );
         if ( g )
         {
-            // std::cout << "|*" << str.size() << str << "*|" << std::endl;
             g = 0;
             str.erase( 0, 2 );
             if ( !str.size() )
@@ -170,14 +152,7 @@ void        ReqHandler::tChunked_post( std::string &str )
         if ( !end_of_chunk )
         {
             int p = getPos( str );
-            // if ( p == -1 )
-            // {
-            //     rest = str;
-            //     return;
-            // }
-            // std::cout << "position : " << p << std::endl;
             chunk_size = getSize( str.substr( 0, p ) );
-            // std::cout << "chunk_size : " << chunk_size << std::endl;
             if ( !chunk_size )
             {
                 endOfRead = 1;
@@ -196,14 +171,12 @@ void        ReqHandler::tChunked_post( std::string &str )
             deleteFile();
             return ( uri_depon_cs( 413 ) );
         }
-        // std::cout << "size counter : " << size_counter << std::endl;
         if ( size_counter < chunk_size )
         {
             pFile.write( str.c_str(), str.size() );
             str.erase( 0, str.size() );
             if ( chunk_size - size_counter < 1023 )
                 read_size = chunk_size - size_counter + 1;
-            // std::cout << "read_size : " << read_size << std::endl;
             end_of_chunk = 1;
             return ;
         }
@@ -213,10 +186,8 @@ void        ReqHandler::tChunked_post( std::string &str )
             pFile.write( s.c_str(), s.size() );
             str.erase( 0, chunk_size );
             g = 1;
-            // rest = str;
             end_of_chunk = 0;
             size_counter = 0;
-            // return ;
         }
         else
         {

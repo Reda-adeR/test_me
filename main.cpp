@@ -1,5 +1,4 @@
 
-
 #include <cstring>
 #include "includes/multiPlex.hpp"
 
@@ -8,7 +7,6 @@ std::string randomStr()
     std::string s = "abcdefghijklmnopqrstuvwxyzZYXWVUTSRQPONMLKJIHGFEDCBA0123456789";
     int         sSize = sizeof(s) - 1;
     std::string ret;
-    // std::string ret;
     srand( static_cast<unsigned int>(time(0)));
     for ( int i = 0 ; i < 8 ; i++ )
         ret.push_back( s[rand() % sSize]);
@@ -36,12 +34,12 @@ int main( int ac, char **av )
     {
         Fconf   configFile( av[1] );
         servers = configFile.getServers();
-        lcs_num ( servers );
         if ( !servers.size() )
         {
             std::cerr << "No correct server found, re-check your config file" << std::endl;
             return 1;
         }
+        lcs_num ( servers );
         MultiPlexer mplex( servers );
         mplex.webServLoop( servers );
     }
@@ -65,14 +63,14 @@ int main( int ac, char **av )
         f << "servername reda1\n";
         f << "root ../../Desktop/www\n";
         f << "limit 1000000\n";
-        f << "location / (\n";
-        f << "get on\n";
-        f << "post off\n";
-        f << "delete off\n";
-        f << "auto_index off\n";
-        f << "index index.html\n";
-        f << "root ../../Desktop/www\n";
-        f << ")\n";
+        // f << "location / (\n";
+        // f << "get on\n";
+        // f << "post off\n";
+        // f << "delete off\n";
+        // f << "auto_index off\n";
+        // f << "index index.html\n";
+        // f << "root ../../Desktop/www\n";
+        // f << ")\n";
         f << "}\n";
         f.close();
         Fconf   configFile( name.c_str() );

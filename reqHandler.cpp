@@ -94,18 +94,9 @@ void ReqHandler::getFinalUri( std::string str )
     std::cout << "uri to split >>>>>>>> " << str << std::endl;
     if ( !splited_uri.size() )
     {
-        //root is the requested directory go check listing auto index ....
         std::string loc_str = "/";
-        // if ( isLocation( loc_str ) )
-        // {
-            s_location loc = getLocationByName( loc_str );
-            isAllowed( loc, splited_uri, 1 );
-        // }
-        // else
-        // {
-        //     request.uri = myServ.root;
-        //     request.status = 200;
-        // }
+        s_location loc = getLocationByName( loc_str );
+        isAllowed( loc, splited_uri, 1 );
     }
     else
     {
@@ -134,16 +125,6 @@ void ReqHandler::getFinalUri( std::string str )
 }
 
 // GETTERS END
-
-// std::vector<std::string> lineSplit( std::string &line )
-// {
-//     std::istringstream fline( line );
-//     std::string word;
-//     std::vector<std::string> ret;
-//     while( fline >> word )
-//         ret.push_back( word );
-//     return ret;
-// }
 
 void ReqHandler::countBodyBytes( std::string &str )
 {
@@ -233,19 +214,6 @@ int    ReqHandler::parseHeaders()
     return 1;
 }
 
-// Serv    ReqHandler::getServer()
-// {
-//     std::vector<Serv> srvs;
-//     for( size_t i = 0 ; i < servers.size() ; i++ )
-//     {
-//         if ( socknData[fdServ].sin_port == htons( servers[i].port ) )
-//             srvs.push_back( servers[i] );
-//     }
-//     if( srvs.size() == 1 )
-//         return srvs.front();
-    
-// }
-
 Serv    ReqHandler::getServer()
 {
     // std::vector<Serv>   same_host_servers;
@@ -284,8 +252,9 @@ void    ReqHandler::parse_request()
         return( uri_depon_cs( 400 ) );
     if ( reqHds.front().size() > 500 )
         return ( uri_depon_cs( 414 ) );
-    std::cerr << "ha ana" << std::endl;
     reqStrToVec( reqHds.front() );
+    if ( !req.size() )
+        return( uri_depon_cs( 400 ) );
     request.method = req.front();
     fillReqHeaders();
 
@@ -377,7 +346,6 @@ ReqHandler::ReqHandler( std::vector<Serv> &_myServ )
     bigScounter = 0;
     g = 0;
     servs = _myServ;
-    // myServ  = _myServ;
     loc_idx = -1;
     bytes_red = 0;
     content_lenght = -1;
@@ -393,9 +361,3 @@ ReqHandler::~ReqHandler()
         pFile.close();
 }
 // ep->events[i].events & EPOLLERR || ep->events[i].events & EPOLLHUP || ep->events[i].events & EPOLLRDHUP
-
-
-// /path/hello/
-// /path/hello//hello      -- slash clean
-// /hello/file.txt
-// /path/hello/location/
