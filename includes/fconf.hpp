@@ -59,7 +59,6 @@ class Serv {
         int  locDupCheck( s_location &loc );
 };
 
-
 class Fconf {
     private :
         std::vector<std::string>    tmp;

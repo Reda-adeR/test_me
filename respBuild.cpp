@@ -24,15 +24,11 @@ std::string     Response::list_folder()
 
     if (dir == NULL)
       return "";
-    response << "<!DOCTYPE html>";
-    response << "<html>";
-    response << "<head>";
-    response << "<title> listing a folder </title>";
-    response << "</head>";
-    response << "<body>";
+    response << "<!DOCTYPE html><html><head><title> listing a folder </title></head><body>";
     while ((entry = readdir(dir)) != NULL)
     {
-        // std::cerr << old_p << std::endl;
+        // if (std::string(entry->d_name) != "." && std::string(entry->d_name) != "..")
+        //     continue;
         response << "<div>";
         response << "<a href=\"";
         if (req->loc_idx != -1)
@@ -52,73 +48,143 @@ std::string     Response::list_folder()
 #include<unistd.h> 
 #include<stdio.h> 
 #include<fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h> // for signal handling
 
-void    Response::exute_cgi(std::stringstream& response)
+#include <sys/time.h> // for timeval
+
+volatile sig_atomic_t timeout_flag = 0;
+
+// Signal handler function for the child process
+void child_timeout_handler(int) {
+    timeout_flag = 1;
+}
+
+void Response::exute_cgi(std::stringstream& response)
 {
     char buffer[1024];
-    ssize_t bytesRead;
+    std::string bdy;
+    // ssize_t bytesRead;
     memset(buffer, 0, 1024);
-    if ((bytesRead = read(pipfd[0], buffer, sizeof(buffer))) == -1)
+    
+    if (pipe(pipfd) == -1)
     {
-        if (errno == EBADF)
+        std::cerr << "Failed to create pipe" << std::endl;
+        return;
+    }
+    c_pid = fork();
+
+    if (c_pid == -1)
+        return;
+    else if (c_pid == 0)
+    {
+        signal(SIGALRM, child_timeout_handler);
+            // Set the timeout duration for child process execution
+        const int child_timeout_seconds = 3;  // Change this to the desired timeout duration
+
+        // Set the alarm to go off after the specified timeout
+        alarm(child_timeout_seconds);
+
+        char *str[4];
+        close(pipfd[0]);
+        dup2(pipfd[1], STDOUT_FILENO);
+        dup2(pipfd[1], STDERR_FILENO);
+        close(pipfd[1]);
+        str[0] = strdup("/usr/bin/php-cgi");
+        str[1] = strdup("-q");
+        str[2] = strdup(req->request.uri.c_str());
+        str[3] = NULL;
+        if (execve(str[0], str, NULL) == -1)
         {
-            if (pipe(pipfd) == -1)
-            {
-                std::cerr << "Failed to create pipe" << std::endl;
-                return;
-            }
-            pid_t c_pid = fork(); 
-        
-            if (c_pid == -1)
-                return ;
-            else if (c_pid == 0)
-            {
-                close(pipfd[0]);
-                dup2(pipfd[1], STDOUT_FILENO);
-                dup2(pipfd[1], STDERR_FILENO);
-                close(pipfd[1]);
-                char *str[4];
-                str[0] = strdup("/bin/php-cgi");
-                str[1] = strdup("-q");
-                str[2] = strdup(req->request.uri.c_str());
-                str[3] = NULL;
-                if (execve(str[0], str, NULL) == -1)
-                {
-                    std::cout<<"execve have been failed"<<std::endl;
-                    return ;
-                }
-            }
-            close(pipfd[1]);
+            perror("execve failed");
+            return;
         }
-        // else
-        //     exit(0);
+        for (int i = 0; i < 3; ++i) {
+            if (str[i] != NULL)
+                free(str[i]);
+        }
+        exit(0);
     }
     else
     {
-        response << std::hex << bytesRead << "\r\n";
-        if (bytesRead)
-            response.write(buffer, bytesRead);
-        else
-        {
-            endOfResp = 1;
-            close(pipfd[0]);
-        }
+        int status;
+        waitpid(c_pid, &status, 0);
+
+        // if (timeout_flag) {
+        //     std::cerr << "Child process execution timed out" << std::endl;
+        //     // Optionally, you can terminate the child process here
+        //     // kill(c_pid, SIGKILL);
+        // }
+        // else
+        // {
+            if (WIFEXITED(status))
+            {
+                if (WEXITSTATUS(status) != 0)
+                {
+                    struct stat statbuf;
+                    req->uri_depon_cs( 500 );
+                    stat( req->request.uri.c_str(), &statbuf );
+                    response << "HTTP/1.1 500 OK\r\n";
+                    response << "Content-Type: text/html\r\n";
+                    response << "Content-Lenght: ";
+                    response << statbuf.st_size;
+                    response << "\r\n";
+                    response << "\r\n";
+                    response << read_from_a_file();
+                    endOfResp = 1;
+                    std::cerr << "Child process exited with non-zero status: " << WEXITSTATUS(status) << std::endl;
+                }
+            }
+            else if (WIFSIGNALED(status))
+            {
+                struct stat statbuf;
+                req->uri_depon_cs( 500 );
+                stat( req->request.uri.c_str(), &statbuf );
+                response << "HTTP/1.1 500 OK\r\n";
+                response << "Content-Type: text/html\r\n";
+                response << "Content-Lenght: ";
+                response << statbuf.st_size;
+                response << "\r\n";
+                response << "\r\n";
+                response << read_from_a_file();
+                endOfResp = 1;
+            }
+            else
+            {
+                response << "HTTP/1.1 200 OK\r\n";
+                response << "Content-Type: text/plain\r\n";
+                response << "Transfer-Encoding: chunked\r\n";
+                response << "\r\n";
+            }
+
+        // }
     }
-    // for (int i = 0; i < 3; ++i) {
-    //     if (str[i] != nullptr)
-    //         free(str[i]);
-    // }
+    close(pipfd[1]);
+}
+
+std::string     Response::read_from_a_pipe()
+{
+    std::stringstream response;
+    const int chunkSize = 1024;
+    char buffer[chunkSize + 1];
+    memset(buffer, 0, chunkSize);
+    size_t bytesRead = read(pipfd[0], buffer, chunkSize);
+    response << std::hex << bytesRead << "\r\n";
+    if (bytesRead)
+        response.write(buffer, bytesRead);
+    else
+    {
+        endOfResp = 1;
+        close(pipfd[0]);
+    }
+    return response.str();
 }
 
 std::string     Response::read_from_a_file()
 {
     std::stringstream response;
 
-    if (cgi_on == true)
-    {
-        exute_cgi(response);
-        return response.str();
-    }
     const int chunkSize = 1024;
     char buffer[chunkSize];
     memset(buffer, 0, chunkSize);
@@ -164,16 +230,71 @@ bool    Response::is_cgi()
         return false;
     std::string path = req->myServ.locations[req->loc_idx].root + req->myServ.locations[req->loc_idx].CGI_PHP;
 
-    if (req->request.uri.find(path) == 0 && req->loc_idx >= 0 && req->myServ.locations[req->loc_idx].CGI_PHP.size())
+    if (req->request.uri.find(".php") != std::string::npos)
         return true;
     return false;
+}
+
+#include <iostream>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+int    Response::DELETE(const std::string& path)
+{
+    if (!folder)
+    {
+        if (access(path.c_str(), W_OK) == 0)
+            unlink(path.c_str());
+        return 0;
+    }
+
+    DIR* dir = opendir(path.c_str());
+    if (!dir)
+        return 1;
+
+    dirent* entry;
+    while ((entry = readdir(dir)))
+    {
+        if (std::string(entry->d_name) != "." && std::string(entry->d_name) != "..")
+        {
+            std::string fullPath = path + "/" + entry->d_name;
+            struct stat st;
+            if (lstat(fullPath.c_str(), &st) == 0)
+            {
+                if (S_ISDIR(st.st_mode))
+                {
+                    if (access(fullPath.c_str(), W_OK) == 0)
+                        DELETE(fullPath);
+                    else
+                        return 1;
+                }
+                else
+                {
+                    if (access(fullPath.c_str(), W_OK) == 0)
+                        unlink(fullPath.c_str());
+                    else
+                        return 1;
+                }
+            }
+            else
+                return 1;
+        }
+    }
+
+    closedir(dir);
+    if (access(path.c_str(), W_OK) == 0)
+        rmdir(path.c_str());
+    return 0;
 }
 
 std::string Response::getHdResp()
 {
     struct stat statbuf;
     std::stringstream response;
+    std::cerr << "*********" << req->request.uri << "**********" <<std::endl;
     stat( req->request.uri.c_str(), &statbuf );
+
     if (req->request.status == 301)
     {
         response << "HTTP/1.1 " << req->request.status << " Moved Permanently\r\n";
@@ -183,6 +304,13 @@ std::string Response::getHdResp()
     }
     if ( access(req->request.uri.c_str(), F_OK) )
         req->uri_depon_cs( 404 );
+    else if (is_cgi() == true && folder == false)
+    {
+        std::cerr<<"*******"<<response.str()<<std::endl;
+        cgi_on = true;
+        exute_cgi(response);
+        return response.str();
+    }
     else if ( statbuf.st_mode & S_IRUSR )
     {
         if (statbuf.st_mode & S_IFDIR)
@@ -195,33 +323,26 @@ std::string Response::getHdResp()
     stat( req->request.uri.c_str(), &statbuf );
     response << "HTTP/1.1 " << req->request.status << " OK\r\n";
     // std::cerr<<"******************"<<req->request.status<<"**********************"<<std::endl;
-    
+
     // std::cerr<<"***************************"<<std::endl;
-    // if (req->request.method == "DELETE")
-    // {
-    //     response << "<html><body><h1>File \""<< req->request.uri <<"\" deleted.</h1></body></html>";
-    //     endOfResp = 1;
-    //     return response.str();
-    // }
+    if (req->request.method == "DELETE")
+    {
+        if ( DELETE(req->request.uri) )
+            req->uri_depon_cs( 500 );
+        else
+            req->uri_depon_cs( 200 );
+    }
     response << "Content-Type: ";
     response << get_file_ext(req->request.uri) << "\r\n";
     // response << "text/html" << "\r\n";
-    if (is_cgi() && folder == false)
-    {
-        response << "Transfer-Encoding: chunked";
-        cgi_on = true;
-    }
-    else
-    {
-        cgi_on = false;
-        response << "Content-Lenght: ";
-        if ( access(req->request.uri.c_str(), F_OK) )
-            response << 522;
-        else
-            response << statbuf.st_size;
-    }
-    response << "\r\n\r\n";
     
+    response << "Content-Lenght: ";
+    if ( access(req->request.uri.c_str(), F_OK) )
+        response << 522;
+    else
+        response << statbuf.st_size;
+    response << "\r\n\r\n";
+    // std::cerr<<statbuf.st_size<<std::endl;
     return response.str();
 }
 

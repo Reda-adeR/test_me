@@ -144,9 +144,13 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
     else
     {
         ssize_t bytesSent;
+        std::string resp;
         if (itr->second->endOfResp != 1)
         {
-            std::string resp = itr->second->folder == false ? itr->second->read_from_a_file() : itr->second->list_folder();
+            if (itr->second->cgi_on == true)
+                resp = itr->second->read_from_a_pipe();
+            else
+                resp = itr->second->folder == false ? itr->second->read_from_a_file() : itr->second->list_folder();
             bytesSent = send( fd, resp.c_str(), resp.size(), 0);
         }
         if ( itr->second->endOfResp || (int)bytesSent == -1 )
