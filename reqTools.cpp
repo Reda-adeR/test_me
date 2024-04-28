@@ -136,6 +136,7 @@ void    ReqHandler::uri_depon_cs( int code )
     defErrP[500] = "../../Desktop/webServ2.6/errPages/err500.html";
     defErrP[501] = "../../Desktop/webServ2.6/errPages/err501.html";
     defErrP[505] = "../../Desktop/webServ2.6/errPages/err505.html";
+    defErrP[200] = "../../Desktop/webServ2.6/success.html";
     std::map<int, std::string>::iterator it = myServ.errorpage.find( code );
     request.status = code;
     endOfRead = 1;

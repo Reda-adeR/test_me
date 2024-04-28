@@ -278,6 +278,7 @@ void    ReqHandler::parse_request()
     // get the server depending on headers and port number
 
     getFinalUri( req[1] );
+
     if ( !checkUrirPath( request.uri ) || !dgbm( myServ.root, request.uri ) )
         return ( uri_depon_cs( 403 ) );
     std::cout << "\033[31m============================" << "concat uri : " << request.uri << "\033[0m" << std::endl;

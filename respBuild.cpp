@@ -82,6 +82,7 @@ void Response::exute_cgi(std::stringstream& response)
         signal(SIGALRM, child_timeout_handler);
             // Set the timeout duration for child process execution
         const int child_timeout_seconds = 3;  // Change this to the desired timeout duration
+        int child_ex;  // Change this to the desired timeout duration
 
         // Set the alarm to go off after the specified timeout
         alarm(child_timeout_seconds);
@@ -95,29 +96,25 @@ void Response::exute_cgi(std::stringstream& response)
         str[1] = strdup("-q");
         str[2] = strdup(req->request.uri.c_str());
         str[3] = NULL;
-        if (execve(str[0], str, NULL) == -1)
-        {
-            perror("execve failed");
-            return;
-        }
+        child_ex = execve(str[0], str, NULL);
         for (int i = 0; i < 3; ++i) {
             if (str[i] != NULL)
                 free(str[i]);
         }
-        exit(0);
+        exit(child_ex);
     }
     else
     {
         int status;
-        waitpid(c_pid, &status, 0);
+        waitpid(c_pid, &status, WNOHANG);
 
-        // if (timeout_flag) {
-        //     std::cerr << "Child process execution timed out" << std::endl;
-        //     // Optionally, you can terminate the child process here
-        //     // kill(c_pid, SIGKILL);
-        // }
-        // else
-        // {
+        if (timeout_flag) {
+            std::cerr << "Child process execution timed out" << std::endl;
+            // Optionally, you can terminate the child process here
+            kill(c_pid, SIGKILL);
+        }
+        else
+        {
             if (WIFEXITED(status))
             {
                 if (WEXITSTATUS(status) != 0)
@@ -138,6 +135,8 @@ void Response::exute_cgi(std::stringstream& response)
             }
             else if (WIFSIGNALED(status))
             {
+                /*shof 3lash kidkhol lhna wakha dakshi mezian*/
+                std::cerr << "got HEre : " << status << std::endl;
                 struct stat statbuf;
                 req->uri_depon_cs( 500 );
                 stat( req->request.uri.c_str(), &statbuf );
@@ -158,7 +157,7 @@ void Response::exute_cgi(std::stringstream& response)
                 response << "\r\n";
             }
 
-        // }
+        }
     }
     close(pipfd[1]);
 }
@@ -226,7 +225,7 @@ std::string Response::get_file_ext(std::string path)
 
 bool    Response::is_cgi()
 {
-    if (req->loc_idx == -1)
+    if (req->loc_idx == -1 || req->request.method != "GET" )
         return false;
     std::string path = req->myServ.locations[req->loc_idx].root + req->myServ.locations[req->loc_idx].CGI_PHP;
 
@@ -324,13 +323,16 @@ std::string Response::getHdResp()
     response << "HTTP/1.1 " << req->request.status << " OK\r\n";
     // std::cerr<<"******************"<<req->request.status<<"**********************"<<std::endl;
 
-    // std::cerr<<"***************************"<<std::endl;
-    if (req->request.method == "DELETE")
+    // std::cerr<<"here status : " << req->request.status <<std::endl;
+    // std::cerr<<"here uri : " << req->request.uri <<std::endl;
+    if (req->request.method == "DELETE" && req->request.status == 200 )
     {
         if ( DELETE(req->request.uri) )
             req->uri_depon_cs( 500 );
         else
             req->uri_depon_cs( 200 );
+        endOfResp = 1;
+        return response.str();
     }
     response << "Content-Type: ";
     response << get_file_ext(req->request.uri) << "\r\n";

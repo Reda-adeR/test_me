@@ -67,6 +67,7 @@ long long getSize( std::string str )
     std::istringstream ss( str );
     long long ret;
     ss >> std::hex >> ret;
+    std::cerr << "ret here : " << ret << std::endl;
     return ret;
 }
 
@@ -140,10 +141,16 @@ void        ReqHandler::tChunked_post( std::string &str )
 {
     while ( 50 )
     {
+        // std::cerr << " str.size :: " <<  str.size() << std::endl;
+        // std::cerr << " size_counter 9bel maytzad :: " <<  size_counter << std::endl;
+        // std::cerr << "||||||||||" << std::endl;
+        // std::cerr << str << std::endl;
+        // std::cerr << "s|s|s|s|s|s|" << std::endl;
         if ( !iStillValid() )
             return ( uri_depon_cs( 409 ) );
         if ( g )
         {
+            // std::cerr <<"\033[32m" << str << "\033[0m"<<std::endl;
             g = 0;
             str.erase( 0, 2 );
             if ( !str.size() )
@@ -152,9 +159,11 @@ void        ReqHandler::tChunked_post( std::string &str )
         if ( !end_of_chunk )
         {
             int p = getPos( str );
+            // std::cerr << "this is p : "  << p << std::endl;
             chunk_size = getSize( str.substr( 0, p ) );
             if ( !chunk_size )
             {
+                // std::cerr << "got Here : " << chunk_size << std::endl; 
                 endOfRead = 1;
                 request.status = 201;
                 request.uri = "../../Desktop/webServ2.6/success.html";
@@ -185,9 +194,11 @@ void        ReqHandler::tChunked_post( std::string &str )
             std::string s = str.substr( 0, chunk_size );
             pFile.write( s.c_str(), s.size() );
             str.erase( 0, chunk_size );
+            // std::cerr << " hna daba gogogo : " <<  size_counter << std::endl;
             g = 1;
             end_of_chunk = 0;
             size_counter = 0;
+            // return;
         }
         else
         {

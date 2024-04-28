@@ -529,7 +529,7 @@ void    Serv::set_locations( std::vector<std::string>& serv, size_t& j )
         {
             save.root = loc_set_help( flag_s, tmp, word, 0 );
             if ( !checkRealPath( save.root, 1 ) )
-                throw ( std::out_of_range("the root in this location is Invalid !") );
+                throw ( std::out_of_range("the root in this location : " + save.name + " is Invalid !") );
             // if ( !save.upload_path.size() )
             //     save.upload_path = save.root;
         }
@@ -542,18 +542,18 @@ void    Serv::set_locations( std::vector<std::string>& serv, size_t& j )
         else if (word == "auto_index" && !flag_s[word])
             save.autoidx = loc_set_help( flag_s, tmp, word, 1 );
         else if (word == "redirection" && !flag_s[word])
-            save.redirection = save.del = loc_set_help( flag_s, tmp, word, 0 );
+            save.redirection = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "index" && !flag_s[word])
-            save.index = save.del = loc_set_help( flag_s, tmp, word, 0 );
+            save.index = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "CGI_PHP" && !flag_s[word])
-            save.CGI_PHP = save.del = loc_set_help( flag_s, tmp, word, 0 );
+            save.CGI_PHP = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "CGI_PYTHON" && !flag_s[word])
-            save.CGI_PYTHON = save.del = loc_set_help( flag_s, tmp, word, 0 );
+            save.CGI_PYTHON = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "CGI_BASH" && !flag_s[word])
-            save.CGI_BASH = save.del = loc_set_help( flag_s, tmp, word, 0 );
+            save.CGI_BASH = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "upload_path" && !flag_s[word])
         {
-            save.upload_path = save.del = loc_set_help( flag_s, tmp, word, 0 );
+            save.upload_path = loc_set_help( flag_s, tmp, word, 0 );
             if ( !checkRealPath( save.upload_path, 1 ) && save.root.size() )
                 save.upload_path = save.root;
                 // char    rPwd[PATH_MAX];
