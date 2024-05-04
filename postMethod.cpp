@@ -64,10 +64,14 @@ void    ReqHandler::pFileOpener()
 
 long long getSize( std::string str )
 {
+    if ( !str.size() )
+        return -1;
     std::istringstream ss( str );
     long long ret;
     ss >> std::hex >> ret;
-    std::cerr << "ret here : " << ret << std::endl;
+    // if ( ret == 0 )
+    //     std::cerr << "getSize : " <<str << std::endl;
+    // std::cerr << "ret here : " << ret << std::endl;
     return ret;
 }
 
@@ -107,15 +111,15 @@ void        ReqHandler::cLenght_post( std::string &str )
 {
     if ( !iStillValid() )
         return ( uri_depon_cs( 409 ) );
-    std::cout << "str.size() in cLenght POST : " << str.size() << std::endl;
+    // std::cout << "str.size() in cLenght POST : " << str.size() << std::endl;
 
     unsigned long long old_bytes_red = bytes_red;
     bytes_red += str.size();
-    std::cout << "          ++++++++++++++" << std::endl;
-    std::cout << "cont_len = " << content_lenght << std::endl;
-    std::cout << "before increm bytes_red = " << old_bytes_red << std::endl;
-    std::cout << "bytes_red = " << bytes_red << std::endl;
-    std::cout << "          ++++++++++++++" << std::endl;
+    // std::cout << "          ++++++++++++++" << std::endl;
+    // std::cout << "cont_len = " << content_lenght << std::endl;
+    // std::cout << "before increm bytes_red = " << old_bytes_red << std::endl;
+    // std::cout << "bytes_red = " << bytes_red << std::endl;
+    // std::cout << "          ++++++++++++++" << std::endl;
 
     if ( bytes_red > myServ.limit )
     {
@@ -141,16 +145,10 @@ void        ReqHandler::tChunked_post( std::string &str )
 {
     while ( 50 )
     {
-        // std::cerr << " str.size :: " <<  str.size() << std::endl;
-        // std::cerr << " size_counter 9bel maytzad :: " <<  size_counter << std::endl;
-        // std::cerr << "||||||||||" << std::endl;
-        // std::cerr << str << std::endl;
-        // std::cerr << "s|s|s|s|s|s|" << std::endl;
         if ( !iStillValid() )
             return ( uri_depon_cs( 409 ) );
         if ( g )
         {
-            // std::cerr <<"\033[32m" << str << "\033[0m"<<std::endl;
             g = 0;
             str.erase( 0, 2 );
             if ( !str.size() )
@@ -159,11 +157,13 @@ void        ReqHandler::tChunked_post( std::string &str )
         if ( !end_of_chunk )
         {
             int p = getPos( str );
-            // std::cerr << "this is p : "  << p << std::endl;
+            if ( p == -1 )
+                return ( uri_depon_cs( 500 ) );
             chunk_size = getSize( str.substr( 0, p ) );
+            if ( (int)chunk_size == -1 )
+                return ( uri_depon_cs( 500 ) );
             if ( !chunk_size )
             {
-                // std::cerr << "got Here : " << chunk_size << std::endl; 
                 endOfRead = 1;
                 request.status = 201;
                 request.uri = "../../Desktop/webServ2.6/success.html";
@@ -194,11 +194,10 @@ void        ReqHandler::tChunked_post( std::string &str )
             std::string s = str.substr( 0, chunk_size );
             pFile.write( s.c_str(), s.size() );
             str.erase( 0, chunk_size );
-            // std::cerr << " hna daba gogogo : " <<  size_counter << std::endl;
+            std::cerr << " hna daba gogogo : " <<  size_counter << std::endl;
             g = 1;
             end_of_chunk = 0;
             size_counter = 0;
-            // return;
         }
         else
         {
@@ -207,6 +206,7 @@ void        ReqHandler::tChunked_post( std::string &str )
             g = 1;
             end_of_chunk = 0;
             size_counter = 0;
+            read_size = 1024;
             return ;
         }
     }

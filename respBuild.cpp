@@ -12,6 +12,8 @@ std::string Response::ret_folder()
     size_t pos = req->request.uri.rfind(rt.back());
     std::string fldr = req->request.uri.substr(pos + rt.back().size(), req->request.uri.size());
     fldr == "" ? fldr : fldr += "/";
+
+
     return fldr;
 }
 
@@ -27,8 +29,9 @@ std::string     Response::list_folder()
     response << "<!DOCTYPE html><html><head><title> listing a folder </title></head><body>";
     while ((entry = readdir(dir)) != NULL)
     {
-        // if (std::string(entry->d_name) != "." && std::string(entry->d_name) != "..")
-        //     continue;
+        old_p = ret_folder();
+        if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..")
+            continue;
         response << "<div>";
         response << "<a href=\"";
         if (req->loc_idx != -1)
@@ -36,7 +39,7 @@ std::string     Response::list_folder()
                 response << req->myServ.locations[req->loc_idx].name << "/";
         response << old_p << entry->d_name << "\">" << entry->d_name << "</a>";
         response << "</div>";
-        old_p = ret_folder();
+
     }
     response << "</body>";
     closedir(dir);
@@ -204,9 +207,9 @@ std::string     Response::read_from_a_file()
     }
     else
     {
-        std::cerr<<"not found"<<std::endl;
         // creat a function that print the 404 err page if not found!
-        response << "not found";
+        req->uri_depon_cs( 404 );
+        response << read_from_a_file();
         endOfResp = 1;
     }
     return response.str();
@@ -229,7 +232,7 @@ bool    Response::is_cgi()
         return false;
     std::string path = req->myServ.locations[req->loc_idx].root + req->myServ.locations[req->loc_idx].CGI_PHP;
 
-    if (req->request.uri.find(".php") != std::string::npos)
+    if (req->request.uri.find(path) == 0 && req->loc_idx >= 0 && req->myServ.locations[req->loc_idx].CGI_PHP.size())
         return true;
     return false;
 }
@@ -291,9 +294,18 @@ std::string Response::getHdResp()
 {
     struct stat statbuf;
     std::stringstream response;
-    std::cerr << "*********" << req->request.uri << "**********" <<std::endl;
     stat( req->request.uri.c_str(), &statbuf );
-
+    std::cerr << "********" << req->request.uri << std::endl;
+    if (req->request.method == "DELETE" && req->request.status == 200)
+    {
+        if ( DELETE(req->request.uri) )
+            req->uri_depon_cs( 500 );
+        else
+            req->uri_depon_cs( 200 );
+        response << "HTTP/1.1 " << req->request.status << " OK\r\n";
+        endOfResp = 1;
+        return response.str();
+    }
     if (req->request.status == 301)
     {
         response << "HTTP/1.1 " << req->request.status << " Moved Permanently\r\n";
@@ -303,19 +315,20 @@ std::string Response::getHdResp()
     }
     if ( access(req->request.uri.c_str(), F_OK) )
         req->uri_depon_cs( 404 );
-    else if (is_cgi() == true && folder == false)
-    {
-        std::cerr<<"*******"<<response.str()<<std::endl;
-        cgi_on = true;
-        exute_cgi(response);
-        return response.str();
-    }
     else if ( statbuf.st_mode & S_IRUSR )
     {
         if (statbuf.st_mode & S_IFDIR)
             folder = true;
         else if( statbuf.st_mode & S_IFREG )
+        {
             folder = false;
+            if (is_cgi() == true && folder == false)
+            {
+                cgi_on = true;
+                exute_cgi(response);
+                return response.str();
+            }
+        }
     }
     else
         req->uri_depon_cs( 403 );
@@ -325,15 +338,6 @@ std::string Response::getHdResp()
 
     // std::cerr<<"here status : " << req->request.status <<std::endl;
     // std::cerr<<"here uri : " << req->request.uri <<std::endl;
-    if (req->request.method == "DELETE" && req->request.status == 200 )
-    {
-        if ( DELETE(req->request.uri) )
-            req->uri_depon_cs( 500 );
-        else
-            req->uri_depon_cs( 200 );
-        endOfResp = 1;
-        return response.str();
-    }
     response << "Content-Type: ";
     response << get_file_ext(req->request.uri) << "\r\n";
     // response << "text/html" << "\r\n";

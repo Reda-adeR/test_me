@@ -1,7 +1,7 @@
 #include <signal.h>
 #include "includes/multiPlex.hpp"
 
-int read_size = 1024;
+// int read_size = 1024;
 
 std::vector<Serv>    MultiPlexer::getServBySock( int sock, std::vector<Serv> &servers )
 {
@@ -46,16 +46,16 @@ MultiPlexer::MultiPlexer( std::vector<Serv> &servers )
     if ( epollFd == -1 )
         throw std::runtime_error( "Epoll creation failed");
     for ( std::vector<Serv>::iterator it = servers.begin() ; it != servers.end() ; it++ ) {
-        if ( !existentSockForPort( it->port ) )
-        {
+        // if ( !existentSockForPort( it->port ) )
+        // {
             int sock = socket( AF_INET, SOCK_STREAM, 0 );
             if ( sock == -1 )
                 throw std::runtime_error( "Socket creation failed");
-            int f = fcntl(sock, F_GETFL, 0);
-            if ( f == -1 )
-                throw std::runtime_error( "F_GETFL in fcntl failed");
-            if ( fcntl(sock, F_SETFL, f | O_NONBLOCK) == -1)
-                throw std::runtime_error( "Failed to set socket to non block");
+            // int f = fcntl(sock, F_GETFL, 0);
+            // if ( f == -1 )
+            //     throw std::runtime_error( "F_GETFL in fcntl failed");
+            // if ( fcntl(sock, F_SETFL, f | O_NONBLOCK) == -1)
+            //     throw std::runtime_error( "Failed to set socket to non block");
             int reuse = 1;
             if ( setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse) ) == -1 )  // remove reuse port & add REUSEADDR
                 throw std::runtime_error( "Failed to set socket option to REUSE");
@@ -70,7 +70,7 @@ MultiPlexer::MultiPlexer( std::vector<Serv> &servers )
             std::cout << "server : " << it->servName << " listen to port : " << it->port << std::endl;
             socknData[sock] = servAdd;
             addSockToEpoll( sock );
-        }
+        // }
     }
 }
 
@@ -100,7 +100,8 @@ void    MultiPlexer::acceptCli( int fd, std::vector<Serv> &servers, std::map<int
 
 int MultiPlexer::spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &reqMap )
 {
-    char buff[read_size];
+    // std::cout << "plz : " << fd << " --- " << obj->read_size << std::endl; 
+    char buff[obj->read_size];
     memset(buff, 0, sizeof(buff) );
     size_t bytes = read( fd, buff, sizeof(buff) - 1 );
     obj->clock_out = clock();
@@ -134,7 +135,7 @@ int MultiPlexer::spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &re
 int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &resMap, std::map<int, ReqHandler*> &reqMap )
 {
     obj->clock_out = clock();
-    read_size = 1024;
+    obj->read_size = 1024;
     std::map<int, Response*>::iterator itr = resMap.find( fd );
     if ( itr == resMap.end() )
     {

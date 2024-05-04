@@ -32,13 +32,29 @@ int commentLine( std::string line )
     return 0;
 }
 
-int    alNumStr( std::string &str )
+int    hostCheck( std::string &str )
 {
-    if ( str.size() > 255 )
-        return 0;
+    int dot = 0;
     for ( size_t i = 0 ; i < str.size() ; i++ )
+        if ( str[i] == '.' )
+            dot++;
+    if ( dot > 3 || str[0] == '.' )
+        return 0;
+    std::vector<std::string> g;
+    std::istringstream ss( str );
+    std::string tok;
+    while ( std::getline( ss, tok, '.' ) )
+        g.push_back( tok );
+    if ( g.size() < 4 )
+        return 0;
+    for ( size_t i = 0 ; i < g.size() ; i++ )
     {
-        if ( !std::isalnum( str[i] ) )
+        if ( g[i].size() > 3 )
+            return 0;
+        for ( size_t j = 0 ; j < g[i].size() ; j++ )
+            if ( !std::isdigit( g[i][j] ) )
+                return 0;
+        if ( atoi( g[i].c_str() ) > 255 || atoi( g[i].c_str() ) < 0 )
             return 0;
     }
     return 1;
@@ -431,7 +447,7 @@ void    Serv::set_host(std::istringstream& _host)
 {
     _host >> this->host;
     _host >> word;
-    if (_host || !this->host.size() ) //|| !alNumStr( this->host )
+    if (_host || !this->host.size() || !hostCheck( this->host ) ) //
         throw (std::out_of_range("Invalid host in this server"));
 }
 

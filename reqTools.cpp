@@ -59,9 +59,9 @@ int checkUrirPath( std::string &str )
             std::cerr << "getcwd reqhandler error" << std::endl;
             return 0;
         }
-        std::string s = rPath;
+        str = rPath; // recently changed
         std::string pwd = rPwd;
-        if ( s == rPwd )
+        if ( str == rPwd )
             return 0;
         return 1;
     }

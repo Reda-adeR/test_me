@@ -16,7 +16,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 
-extern int read_size;
+// extern int read_size;
 std::string decodeUri( std::string str );
 int checkUrirPath( std::string &str );
 int checkUri( std::string &str );
@@ -40,6 +40,8 @@ class ReqHandler {
         std::string     value;
         std::string     cType;
         std::string     host;
+        std::string     cookie;
+        std::string     query;
         std::string     fName;
         double  clock_out;
         bool    passedOnce;
@@ -48,6 +50,7 @@ class ReqHandler {
         int     end_of_chunk;
         int     loc_idx;
         int     endOfRead;
+        int     read_size;
         unsigned long long  chunk_size;
         unsigned long long  size_counter;
         unsigned long long  bigScounter;
@@ -82,6 +85,7 @@ class ReqHandler {
         void        isAllowed( s_location &loc, std::vector<std::string> &splited_uri, int i );
         void        checkRetIdx();
         void        getFinalUri( std::string str );
+        void        storeQuery();
         int         getHeaderVal( std::string key, std::string &val );
         int         parseHeaders();
         int         iStillValid();
