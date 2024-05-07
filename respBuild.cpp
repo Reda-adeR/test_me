@@ -57,14 +57,14 @@ std::string     Response::list_folder()
 
 #include <sys/time.h> // for timeval
 
-volatile sig_atomic_t timeout_flag = 0;
+// volatile sig_atomic_t timeout_flag = 0;
 
-// Signal handler function for the child process
-void child_timeout_handler(int) {
-    timeout_flag = 1;
-}
+// // Signal handler function for the child process
+// void child_timeout_handler(int) {
+//     timeout_flag = 1;
+// }
 
-void Response::exute_cgi(std::stringstream& response)
+void Response::exute_cgi()
 {
     char buffer[1024];
     std::string bdy;
@@ -82,23 +82,33 @@ void Response::exute_cgi(std::stringstream& response)
         return;
     else if (c_pid == 0)
     {
-        signal(SIGALRM, child_timeout_handler);
+        // signal(SIGALRM, child_timeout_handler);
+
             // Set the timeout duration for child process execution
-        const int child_timeout_seconds = 3;  // Change this to the desired timeout duration
-        int child_ex;  // Change this to the desired timeout duration
+        // const int child_timeout_seconds = 3;  // Change this to the desired timeout duration
+        int child_ex;
 
         // Set the alarm to go off after the specified timeout
-        alarm(child_timeout_seconds);
+        // alarm(child_timeout_seconds);
 
         char *str[4];
-        close(pipfd[0]);
+        // close(pipfd[0]);
         dup2(pipfd[1], STDOUT_FILENO);
-        dup2(pipfd[1], STDERR_FILENO);
+        // dup2(pipfd[1], STDERR_FILENO);
         close(pipfd[1]);
         str[0] = strdup("/usr/bin/php-cgi");
         str[1] = strdup("-q");
         str[2] = strdup(req->request.uri.c_str());
         str[3] = NULL;
+        std::cerr << " hhheeeeeehhh " << pipfd[0] << std::endl;
+        struct epoll_event ev;
+        ev.events = EPOLLIN;
+        ev.data.fd = pipfd[0];
+        int g = epoll_ctl( ep_fd, EPOLL_CTL_ADD, pipfd[0], &ev );
+        if (g == -1)
+            std::cerr << "Error adding file descriptor to epoll instance: " << strerror(errno) << std::endl;
+        std::cerr << g << std::endl;
+        cgi_start = clock();
         child_ex = execve(str[0], str, NULL);
         for (int i = 0; i < 3; ++i) {
             if (str[i] != NULL)
@@ -106,82 +116,99 @@ void Response::exute_cgi(std::stringstream& response)
         }
         exit(child_ex);
     }
-    else
-    {
-        int status;
-        waitpid(c_pid, &status, WNOHANG);
+    // else
+    // {
+    //     int status;
+    //     waitpid(c_pid, &status, WNOHANG);
 
-        if (timeout_flag) {
-            std::cerr << "Child process execution timed out" << std::endl;
-            // Optionally, you can terminate the child process here
-            kill(c_pid, SIGKILL);
-        }
-        else
-        {
-            if (WIFEXITED(status))
-            {
-                if (WEXITSTATUS(status) != 0)
-                {
-                    struct stat statbuf;
-                    req->uri_depon_cs( 500 );
-                    stat( req->request.uri.c_str(), &statbuf );
-                    response << "HTTP/1.1 500 OK\r\n";
-                    response << "Content-Type: text/html\r\n";
-                    response << "Content-Lenght: ";
-                    response << statbuf.st_size;
-                    response << "\r\n";
-                    response << "\r\n";
-                    response << read_from_a_file();
-                    endOfResp = 1;
-                    std::cerr << "Child process exited with non-zero status: " << WEXITSTATUS(status) << std::endl;
-                }
-            }
-            else if (WIFSIGNALED(status))
-            {
-                /*shof 3lash kidkhol lhna wakha dakshi mezian*/
-                std::cerr << "got HEre : " << status << std::endl;
-                struct stat statbuf;
-                req->uri_depon_cs( 500 );
-                stat( req->request.uri.c_str(), &statbuf );
-                response << "HTTP/1.1 500 OK\r\n";
-                response << "Content-Type: text/html\r\n";
-                response << "Content-Lenght: ";
-                response << statbuf.st_size;
-                response << "\r\n";
-                response << "\r\n";
-                response << read_from_a_file();
-                endOfResp = 1;
-            }
-            else
-            {
-                response << "HTTP/1.1 200 OK\r\n";
-                response << "Content-Type: text/plain\r\n";
-                response << "Transfer-Encoding: chunked\r\n";
-                response << "\r\n";
-            }
+    //     // if (timeout_flag) {
+    //     //     // Optionally, you can terminate the child process here
+    //     //     struct stat statbuf;
+    //     //     req->uri_depon_cs( 500 );
+    //     //     stat( req->request.uri.c_str(), &statbuf );
+    //     //     response << "HTTP/1.1 500 OK\r\n";
+    //     //     response << "Content-Type: text/html\r\n";
+    //     //     response << "Content-Length: ";
+    //     //     response << statbuf.st_size;
+    //     //     response << "\r\n";
+    //     //     response << "\r\n";
+    //     //     response << read_from_a_file();
+    //     //     endOfResp = 1;
+    //     //     kill(c_pid, SIGKILL);
+    //     // }
+    //     else
+    //     {
+    //         if (WIFEXITED(status))
+    //         {
+    //             if (WEXITSTATUS(status))
+    //             {
+    //                 struct stat statbuf;
+    //                 req->uri_depon_cs( 500 );
+    //                 stat( req->request.uri.c_str(), &statbuf );
+    //                 response << "HTTP/1.1 500 OK\r\n";
+    //                 response << "Content-Type: text/html\r\n";
+    //                 response << "Content-Length: ";
+    //                 response << statbuf.st_size;
+    //                 response << "\r\n";
+    //                 response << "\r\n";
+    //                 response << read_from_a_file();
+    //                 endOfResp = 1;
+    //                 std::cerr << "Child process exited with non-zero status: " << WEXITSTATUS(status) << std::endl;
+    //             }
+    //         }
+    //         // else if (WIFSIGNALED(status))
+    //         // { 
+    //         //     /*shof 3lash kidkhol lhna wakha dakshi mezian*/
+    //         // }
+    //         else
+    //         {
+    //             response << "HTTP/1.1 200 OK\r\n";
+    //             response << "Content-Type: text/plain\r\n";
+    //             response << "Transfer-Encoding: chunked\r\n";
+    //             response << "\r\n";
+    //         }
 
-        }
-    }
+    //     }
+    // }
     close(pipfd[1]);
 }
 
-std::string     Response::read_from_a_pipe()
+// std::string     Response::read_from_a_pipe()
+// {
+//     std::stringstream response;
+//     const int chunkSize = 1024;
+//     char buffer[chunkSize + 1];
+//     memset(buffer, 0, chunkSize);
+//     size_t bytesRead = read(pipfd[0], buffer, chunkSize);
+//     response << std::hex << bytesRead << "\r\n";
+//     if (bytesRead)
+//         response.write(buffer, bytesRead);
+//     else
+//     {
+//         endOfResp = 1;
+//         close(pipfd[0]);
+//     }
+//     return response.str();
+// }
+
+std::string  Response::cgi_response()
 {
     std::stringstream response;
+
     const int chunkSize = 1024;
-    char buffer[chunkSize + 1];
+    char buffer[chunkSize];
     memset(buffer, 0, chunkSize);
-    size_t bytesRead = read(pipfd[0], buffer, chunkSize);
-    response << std::hex << bytesRead << "\r\n";
-    if (bytesRead)
-        response.write(buffer, bytesRead);
+
+    cgi_data.read(buffer, chunkSize);
+
+    if (cgi_data.gcount())
+        response.write(buffer, cgi_data.gcount());
     else
-    {
         endOfResp = 1;
-        close(pipfd[0]);
-    }
     return response.str();
+
 }
+
 
 std::string     Response::read_from_a_file()
 {
@@ -325,7 +352,7 @@ std::string Response::getHdResp()
             if (is_cgi() == true && folder == false)
             {
                 cgi_on = true;
-                exute_cgi(response);
+                exute_cgi();
                 return response.str();
             }
         }
@@ -342,7 +369,7 @@ std::string Response::getHdResp()
     response << get_file_ext(req->request.uri) << "\r\n";
     // response << "text/html" << "\r\n";
     
-    response << "Content-Lenght: ";
+    response << "Content-Length: ";
     if ( access(req->request.uri.c_str(), F_OK) )
         response << 522;
     else
@@ -379,6 +406,7 @@ Response::Response( ReqHandler *_req, int _cliSock )
     endOfResp = 0;
     req = _req;
     folder = false;
+    endOfCGI = false;
     cgi_on = false;
     cType[""] = "text/plain";
     cType["php"] = "text/plain";

@@ -42,6 +42,7 @@ class ReqHandler {
         std::string     host;
         std::string     cookie;
         std::string     query;
+        std::string     pathInfo;
         std::string     fName;
         double  clock_out;
         bool    passedOnce;

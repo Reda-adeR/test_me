@@ -12,12 +12,15 @@
 #include <map>
 #include "respBuilder.hpp"
 
+class Response;
+
 class MultiPlexer {
     private:
         int epollFd;
         std::map<int, int>          serv_cli;
         std::map<int, sockaddr_in>  socknData;
     public:
+        bool pipe_closed;
         MultiPlexer( std::vector<Serv> &servers );
         ~MultiPlexer();
         std::vector<Serv>    getServBySock( int sock, std::vector<Serv> &servers );
@@ -29,6 +32,9 @@ class MultiPlexer {
         int     isFdServer( int fd );
         int     spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &reqMap );
         int     spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &resMap, std::map<int, ReqHandler*> &reqMap );
+
+        std::string read_from_a_pipe(int fd);
+
 };
 
 #endif
