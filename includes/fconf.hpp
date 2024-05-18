@@ -30,7 +30,7 @@ typedef struct location {
     std::string redirection;
     std::string index;
     std::string CGI_PHP;
-    std::string CGI_PYTHON;
+    std::string CGI_PY;
     std::string CGI_BASH;
     std::string upload_path;
 } s_location;

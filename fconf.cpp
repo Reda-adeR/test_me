@@ -263,7 +263,7 @@ void    Fconf::getData( std::ifstream &configf )
     }
 }
 
-void    dontGoBeforeMe( std::string &r, std::string &locr )
+void    dontGoBeforeMe( std::string &r, std::string &locr, int s )
 {
     std::vector<std::string>    vr = split_uri( r );
     std::vector<std::string>    vlocr = split_uri( locr );
@@ -271,14 +271,20 @@ void    dontGoBeforeMe( std::string &r, std::string &locr )
         return;
     if ( (!vlocr.size() && vr.size()) || (vlocr.size() < vr.size()) )
     {
-        locr = r;
+        if ( !s )
+            locr = "";
+        else
+            locr = r;
         return;
     }
     for ( size_t i = 0 ; i < vr.size() ; i++ )
     {
         if ( vr[i] != vlocr[i] )
         {
-            locr = r;
+            if ( !s )
+                locr = "";
+            else
+                locr = r;
             return;
         }
     }
@@ -299,10 +305,27 @@ void    uploadPvalidation( std::string &locr, std::string &upl, std::string &p )
     if ( realpath( str.c_str(), rPath ) != NULL )
     {
         upl = rPath;
-        dontGoBeforeMe( locr, upl );
+        dontGoBeforeMe( locr, upl, 1 );
     }
     else
         p = "off";
+}
+
+void    cgiPathsValidation( std::string &r, std::string &cgi )
+{
+    if ( !cgi.size() )
+        return;
+    if ( cgi[0] != '/' )
+        cgi = "/" + cgi;
+    std::string str = r + cgi;
+    char rPath[PATH_MAX];
+    if ( realpath( str.c_str(), rPath ) != NULL )
+    {
+        cgi = rPath;
+        dontGoBeforeMe( r, cgi, 0 );
+    }
+    else
+        cgi = "";
 }
 
 Fconf::Fconf ( const char *file )
@@ -320,11 +343,17 @@ Fconf::Fconf ( const char *file )
         for ( size_t j = 0 ; j < myServers[i].locations.size() ; j++ )
         {
             dontGoBeforeMe( myServers[i].root,
-                            myServers[i].locations[j].root );
+                            myServers[i].locations[j].root, 1 );
 
             uploadPvalidation(  myServers[i].locations[j].root,
                                 myServers[i].locations[j].upload_path,
                                 myServers[i].locations[j].post );
+            
+            cgiPathsValidation( myServers[i].locations[j].root,
+                                myServers[i].locations[j].CGI_PHP );
+
+            cgiPathsValidation( myServers[i].locations[j].root,
+                                myServers[i].locations[j].CGI_PY );
         }
     }
     configf.close();
@@ -563,8 +592,8 @@ void    Serv::set_locations( std::vector<std::string>& serv, size_t& j )
             save.index = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "CGI_PHP" && !flag_s[word])
             save.CGI_PHP = loc_set_help( flag_s, tmp, word, 0 );
-        else if (word == "CGI_PYTHON" && !flag_s[word])
-            save.CGI_PYTHON = loc_set_help( flag_s, tmp, word, 0 );
+        else if (word == "CGI_PY" && !flag_s[word])
+            save.CGI_PY = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "CGI_BASH" && !flag_s[word])
             save.CGI_BASH = loc_set_help( flag_s, tmp, word, 0 );
         else if (word == "upload_path" && !flag_s[word])

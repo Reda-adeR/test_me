@@ -213,18 +213,29 @@ int    ReqHandler::parseHeaders()
 
 Serv    ReqHandler::getServer()
 {
-    // std::vector<Serv>   same_host_servers;
+    std::vector<Serv>   same_host_servers;
+    // push all the servers with same port to this vector
+    // then if its size is 1 return it
+    // size 0 idont think is possible
+    // else look for server via serverName
     for ( size_t i = 0 ; i < servs.size() ; i++ )
     {
         std::stringstream ss;
         ss << servs[i].port;
         std::string concat = servs[i].host + ":" + ss.str();
         if ( servs[i].host == host || concat == host )
-            return servs[i];
+            same_host_servers.push_back( servs[i] );
+            // return servs[i];
     }
-    for ( size_t i = 0 ; i < servs.size() ; i++ )
-        if ( servs[i].servName == host )
-            return servs[i];
+    if ( same_host_servers.size() == 1 )
+        return same_host_servers.front();
+    // for ( size_t i = 0 ; i < servs.size() ; i++ )
+    //     if ( servs[i].servName == host )
+    //         return servs[i];
+    for ( size_t i = 0 ; i < same_host_servers.size() ; i++ )
+        if ( same_host_servers[i].servName == host )
+            return same_host_servers[i];
+    
     return servs.front();
 }
 
@@ -300,10 +311,10 @@ void    ReqHandler::parse_request()
 
     getFinalUri( req[1] );
     storeQuery();
-    std::cerr << " path info : " << pathInfo << std::endl;
-    std::cerr << " query     : " << query << std::endl;
-    std::cerr << " uri       : " << request.uri << std::endl;
-    if ( !checkUrirPath( request.uri ) || !dgbm( myServ.root, request.uri ) )
+    // std::cerr << " path info : " << pathInfo << std::endl;
+    // std::cerr << " query     : " << query << std::endl;
+    // std::cerr << " uri       : " << request.uri << std::endl;
+    if ( !checkUrirPath( request.uri ) || !dgbm( myServ.locations[loc_idx].root, request.uri ) )
         return ( uri_depon_cs( 403 ) );
     std::cout << "\033[31m============================" << "concat uri : " << request.uri << "\033[0m" << std::endl;
     if ( request.method == "GET" )

@@ -42,10 +42,13 @@ int MultiPlexer::existentSockForPort( int &nport )
 
 MultiPlexer::MultiPlexer( std::vector<Serv> &servers )
 {
-    epollFd = epoll_create( servers.size()+5);
+    epollFd = epoll_create( servers.size() );
+    // std::cerr << " multi xxfd epoll : " << epollFd << std::endl;
+
     if ( epollFd == -1 )
         throw std::runtime_error( "Epoll creation failed");
-    for ( std::vector<Serv>::iterator it = servers.begin() ; it != servers.end() ; it++ ) {
+    for ( std::vector<Serv>::iterator it = servers.begin() ; it != servers.end() ; it++ )
+    {
         // if ( !existentSockForPort( it->port ) )
         // {
             int sock = socket( AF_INET, SOCK_STREAM, 0 );
@@ -107,13 +110,12 @@ int MultiPlexer::spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &re
     obj->clock_out = clock();
     if ( (int)bytes == -1 )
     {
-        std::cerr << "error read failed 1" << std::endl;
+        std::cerr << "error read failed" << std::endl;
         close( fd );
         return 0;
     }
     else if ( !bytes )
     {
-        std::cout << "ATTETION ! 0 BYTES" << std::endl;
         delSockFrEpoll( fd );
         serv_cli.erase( fd );
         reqMap.erase( fd );
@@ -139,38 +141,57 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
     std::map<int, Response*>::iterator itr = resMap.find( fd );
     if ( itr == resMap.end() )
     {
-        Response *rs = new Response( obj, fd );
-        rs->ep_fd = epollFd;
+        Response *rs = new Response( obj, fd, epollFd );
+        // rs->ep_fd = epollFd;
+        // std::cerr << "rs->ep_fd mult : "<< rs->ep_fd << std::endl;
+        // std::cerr << "************" << rs->endOfResp <<std::endl;
         resMap[fd] = rs;
     }
     else
     {
         ssize_t bytesSent;
-        std::string resp;
+        std::stringstream resp;
         if (itr->second->endOfResp != 1)
         {
             clock_t end = clock();
             if (itr->second->cgi_on)
             {
                 float timeOut = static_cast<float>(end - itr->second->cgi_start) / CLOCKS_PER_SEC;
+                
+                // if (WIFSIGNALED(itr->second->cgi_status))
+                //     std::cerr << "ERRRRRRRROR : " << strerror(errno) << std::endl;
+
                 if (itr->second->endOfCGI)
-                    resp = itr->second->cgi_response();/*hena response akon dial cgi hadi atbedel*/
-                else if (timeOut > 10)
+                    resp << itr->second->cgi_response();/*hena response akon dial cgi hadi atbedel*/
+                else if (timeOut > 4)
                 {
+                    struct stat statbuf;
+                    itr->second->req->uri_depon_cs(500);
+                    stat( itr->second->req->request.uri.c_str(), &statbuf );
+                    resp << "HTTP/1.1 500 OK\r\n";
+                    resp << "Content-Type: text/html\r\n";
+                    resp << "Content-Length: ";
+                    resp << statbuf.st_size;
+                    resp << "\r\n";
+                    resp << "\r\n";
                     itr->second->cgi_on = false;
                     itr->second->endOfResp = 0;
-                    itr->second->req->uri_depon_cs(500);
                 }
             }
             if (itr->second->cgi_on == false)
             {
-                std::cerr<<"hola list*************"<<std::endl;
-                resp = itr->second->folder == false ? itr->second->read_from_a_file() : itr->second->list_folder();
+                // std::cerr<<"folder : " << itr->second->folder <<std::endl;
+                resp << (itr->second->folder == false ? itr->second->read_from_a_file() : itr->second->list_folder());
+                // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
+                // std::cerr<<resp<<std::endl;
+                // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
             }
-            bytesSent = send( fd, resp.c_str(), resp.size(), 0);
+            bytesSent = send( fd, resp.str().c_str(), resp.str().size(), 0);
         }
         if ( itr->second->endOfResp || (int)bytesSent == -1 )
         {
+
+            // std::cerr << "ok destroyed  : " << fd << std::endl;
             delSockFrEpoll( fd );
             delete( itr->second );
             delete( obj );
@@ -184,7 +205,7 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
     return 1;
 }
 
-std::string     MultiPlexer::read_from_a_pipe(int fd)
+std::string     MultiPlexer::read_from_a_pipe(int fd, bool &pipe_closed)
 {
     std::stringstream response;
     const int chunkSize = 1024;
@@ -197,8 +218,16 @@ std::string     MultiPlexer::read_from_a_pipe(int fd)
         response.write(buffer, bytesRead);
     else
     {
+        struct epoll_event ev;
+        ev.events = EPOLLIN;
+        ev.data.fd = fd;
+        // std::cerr<<"fd " << ev.data.fd << std::endl;
+        // std::cerr<<"epollfd " << epollFd << std::endl;
+        if ( epoll_ctl( epollFd, EPOLL_CTL_DEL, ev.data.fd, &ev ) == -1 )
+            std::cerr << "Error : " << strerror(errno) << std::endl;        // delSockFrEpoll(fd);
         close(fd);
         pipe_closed = true;
+        // std::cerr<<pipe_closed<<std::endl;
     }
     return response.str();
 }
@@ -225,20 +254,22 @@ void    MultiPlexer::webServLoop( std::vector<Serv> &servers )
                 continue ;
             }
             std::map<int, ReqHandler*>::iterator it = reqMap.find( evs[i].data.fd );
+            // std::cerr << "checker : " << evs[i].data.fd << std::endl;
             if ( it == reqMap.end() )
             {
-                std::map<int, Response*>::iterator it = resMap.begin();
-                for ( ; it != resMap.end(); it++)
+                std::map<int, Response*>::iterator itr = resMap.begin();
+                for ( ; itr != resMap.end(); itr++)
                 {
-                    std::cerr<<"--------------"<<std::endl;
-                    if (it->second->pipfd[0] == evs[i].data.fd)
+                    // std::cerr<<"--------------"<<std::endl;
+                    if (itr->second->pipfd[0] == evs[i].data.fd)
                     {
-                        it->second->cgi_data << read_from_a_pipe(evs[i].data.fd);
-                        it->second->endOfCGI = pipe_closed;
+                        itr->second->cgi_data << read_from_a_pipe(evs[i].data.fd, itr->second->endOfCGI);
                         continue;
                     }
                 }
+                continue;
             }
+            // std::cerr << "enditr->second->endOfCGIOfCGI : " << std::endl;
             if ( evs[i].events & EPOLLIN && !it->second->endOfRead )
                 if ( !spotIn( evs[i].data.fd, it->second, reqMap ) )
                     continue;

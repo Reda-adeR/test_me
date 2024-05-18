@@ -25,57 +25,45 @@ void    lcs_num( std::vector<Serv> servers )
 }
 
 int main( int ac, char **av )
-{
-    
-    std::vector<Serv> servers;
-    if ( ac > 2 )
-        std::cerr << "wrong number of arguments!" << std::endl;
-    else if ( ac == 2 )
+{        
+    try
     {
-        Fconf   configFile( av[1] );
-        servers = configFile.getServers();
-        if ( !servers.size() )
+        std::vector<Serv> servers;
+        if ( ac > 2 )
+            std::cerr << "wrong number of arguments!" << std::endl;
+        else if ( ac == 2 )
         {
-            std::cerr << "No correct server found, re-check your config file" << std::endl;
-            return 1;
+            Fconf   configFile( av[1] );
+            servers = configFile.getServers();
+            if ( !servers.size() )
+                throw std::runtime_error( "No correct server found, re-check your config file" );
+            lcs_num ( servers );
+            MultiPlexer mplex( servers );
+            mplex.webServLoop( servers );
         }
-        lcs_num ( servers );
-        MultiPlexer mplex( servers );
-        mplex.webServLoop( servers );
+        else
+        {
+            std::string name = randomStr() + ".config";
+            std::ofstream f( name.c_str() );
+            if ( !f.is_open() )
+                throw std::runtime_error( "Error oppening the default config file" );
+            f << "server{\n";
+            f << "port 5555\n";
+            f << "host 127.0.0.1\n";
+            f << "servername reda1\n";
+            f << "root ../../Desktop/www\n";
+            f << "limit 1000000\n";
+            f << "}\n";
+            f.close();
+            Fconf   configFile( name.c_str() );
+            servers = configFile.getServers();
+            MultiPlexer mplex( servers );
+            mplex.webServLoop( servers );
+        }
     }
-    else
+    catch( const std::exception& e )
     {
-        char    rPwd[PATH_MAX];
-        if ( getcwd( rPwd, sizeof( rPwd ) ) == NULL )
-            return 0;
-        std::string pth = rPwd;
-        std::string name = randomStr();
-        std::string fileName = pth + "/" + name;
-        std::ofstream f( fileName.c_str() );
-        if ( !f.is_open() )
-        {
-            std::cerr << "Error oppening the default config file" << std::endl;
-            exit(1);
-        }
-        f << "server{\n";
-        f << "port 5555\n";
-        f << "host 127.0.0.1\n";
-        f << "servername reda1\n";
-        f << "root ../../Desktop/www\n";
-        f << "limit 1000000\n";
-        // f << "location / (\n";
-        // f << "get on\n";
-        // f << "post off\n";
-        // f << "delete off\n";
-        // f << "auto_index off\n";
-        // f << "index index.html\n";
-        // f << "root ../../Desktop/www\n";
-        // f << ")\n";
-        f << "}\n";
-        f.close();
-        Fconf   configFile( name.c_str() );
-        servers = configFile.getServers();
-        MultiPlexer mplex( servers );
-        mplex.webServLoop( servers );
+        std::cerr << e.what() << std::endl;
     }
+    return 1;
 }

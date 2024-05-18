@@ -98,7 +98,8 @@ int ReqHandler::iStillValid()
         std::cerr << "File does not exist." << std::endl;
         return 0;
     }
-    if (access(fName.c_str(), W_OK) != 0) {
+    if (access(fName.c_str(), W_OK) != 0)
+    {
         std::cerr << "No write permission for the file." << std::endl;
         return 0;
     }
@@ -137,7 +138,10 @@ void        ReqHandler::cLenght_post( std::string &str )
     {
         endOfRead = 1;
         request.status = 201;
-        request.uri = "../../Desktop/webServ2.6/success.html";
+        std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
+        std::cerr << "print CGI : " << cgi << std::endl;
+        if ( cgi != "php" && cgi != "py" )
+            request.uri = "../../Desktop/webServ2.6/success.html";
     }
 }
 
@@ -166,7 +170,10 @@ void        ReqHandler::tChunked_post( std::string &str )
             {
                 endOfRead = 1;
                 request.status = 201;
-                request.uri = "../../Desktop/webServ2.6/success.html";
+                std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
+                std::cerr << "print CGI : " << cgi << std::endl;
+                if ( cgi != "php" && cgi != "py" )
+                    request.uri = "../../Desktop/webServ2.6/success.html";
                 return;
             }
             p += 2;
@@ -194,7 +201,6 @@ void        ReqHandler::tChunked_post( std::string &str )
             std::string s = str.substr( 0, chunk_size );
             pFile.write( s.c_str(), s.size() );
             str.erase( 0, chunk_size );
-            std::cerr << " hna daba gogogo : " <<  size_counter << std::endl;
             g = 1;
             end_of_chunk = 0;
             size_counter = 0;
