@@ -172,6 +172,7 @@ void    ReqHandler::fillReqHeaders()
 int    ReqHandler::parseHeaders()
 {
     getHeaderVal( "Cookie:", cookie );
+    std::cerr << "cookiiiiiie : " << cookie << std::endl;
     if ( !getHeaderVal( "Host:", value ) )
         return ( uri_depon_cs( 400 ), 0 );
     else

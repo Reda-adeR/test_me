@@ -257,6 +257,7 @@ void    MultiPlexer::webServLoop( std::vector<Serv> &servers )
             // std::cerr << "checker : " << evs[i].data.fd << std::endl;
             if ( it == reqMap.end() )
             {
+                std::cerr << "this is me : " << evs[i].data.fd << std::endl;
                 std::map<int, Response*>::iterator itr = resMap.begin();
                 for ( ; itr != resMap.end(); itr++)
                 {
@@ -280,6 +281,7 @@ void    MultiPlexer::webServLoop( std::vector<Serv> &servers )
             float timeOut = static_cast<float>(end - it->second->clock_out) / CLOCKS_PER_SEC;
             if ( timeOut >= 10 )
             {
+                std::cerr << "here im : " << evs[i].data.fd << " : " << end << " - " << it->second->clock_out << std::endl;
                 it->second->deleteFile();
                 it->second->uri_depon_cs( 408 );
             }
