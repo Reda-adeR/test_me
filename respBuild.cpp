@@ -239,6 +239,21 @@ std::string  Response::cgi_response()
     if (cgi_resp_start != true)
     {
         cgi_resp_start = true;
+        if ( cgi_data.str().find("Status: 302 Found") != std::string::npos )
+        {
+            std::string lc;
+            while ( getline(cgi_data, lc) )
+            {
+                if ( lc.find("Location: ") != std::string::npos )
+                    break;
+            }
+            response << "HTTP/1.1 " << 302 << "\r\n";
+            std::cerr << "|" << lc << "|" << std::endl;
+            response << lc;
+            // response << "\r\n";
+            endOfResp = 1;
+            return response.str();
+        }
         response << "HTTP/1.1 200 OK\r\n";
         // response << "Content-Type: text/html\r\n";
         // response << "Content-Length: " << cgi_data.str().size() << "\r\n";
