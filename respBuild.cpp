@@ -95,21 +95,21 @@ void    Response::env_init()
 {
     std::stringstream s;
     std::stringstream ss;
-    this->env = (char **)malloc(sizeof(char *) * 12);
+    this->env = (char **)malloc(sizeof(char *) * 11);
     
     // std::string authType         = "AUTH_TYPE=Basic";/**/
-    std::string contentLength    = "CONTENT_LENGTH=";
-    std::string contentType      = "CONTENT_TYPE=text/html";
+    // std::string contentLength    = "CONTENT_LENGTH=";
+    // std::string contentType      = "CONTENT_TYPE=text/html";
     std::string gatewayInterface = "GATEWAY_INTERFACE=CGI/1.1";/**/
-    std::string queryString      = "QUERY_STRING=";
-    std::string redirectstatus   = "REDIRECT_STATUS=200";
+    std::string queryString      = "QUERY_STRING=";/**/
+    std::string redirectstatus   = "REDIRECT_STATUS=200";/**/
     std::string requestMethod    = "REQUEST_METHOD=";/**/
     std::string scriptName       = "SCRIPT_FILENAME=";/**/
     std::string serverName       = "SERVER_NAME=localhost";/**/
     std::string serverPort       = "SERVER_PORT=";/**/
     std::string serverProtocol   = "SERVER_PROTOCOL=HTTP/1.1";/**/
-    std::string pathInfo         = "PATH_INFO=";
-    std::string cookie           = "HTTP_COOKIE=";
+    std::string pathInfo         = "PATH_INFO=";/**/
+    std::string cookie           = "HTTP_COOKIE=";/**/
 
     // std::string pathTranslated   = "PATH_TRANSLATED=/var/www/html/resource";
     // std::string remoteAddr       = "REMOTE_ADDR=192.168.1.100";
@@ -127,12 +127,12 @@ void    Response::env_init()
     this->env[4] = strdup((serverName).c_str());/**/
     ss << serverPort << req->myServ.port;
     this->env[5] = strdup(ss.str().c_str()); /**/  
-    this->env[6] = strdup((contentType).c_str());/**/
-    this->env[7] = strdup((gatewayInterface).c_str());/**/
-    this->env[8] = strdup((serverProtocol).c_str());/**/
-    this->env[9] = strdup((pathInfo + req->pathInfo).c_str());/**/
-    this->env[10] = strdup((cookie + req->cookie).c_str());/**/
-    this->env[11] = NULL;
+    // this->env[6] = strdup((contentType).c_str());/**/
+    this->env[6] = strdup((gatewayInterface).c_str());/**/
+    this->env[7] = strdup((serverProtocol).c_str());/**/
+    this->env[8] = strdup((pathInfo + req->pathInfo).c_str());/**/
+    this->env[9] = strdup((cookie + req->cookie).c_str());/**/
+    this->env[10] = NULL;
 
     for (int i = 0; i < 10; ++i)
         std::cerr << this->env[i] << std::endl;
@@ -148,7 +148,7 @@ void    Response::env_init()
 void Response::exute_cgi()
 {
     // std::cerr << " response " << std::endl;
-
+    
     char buffer[1024];
     std::string bdy;
     memset(buffer, 0, 1024);
@@ -240,9 +240,9 @@ std::string  Response::cgi_response()
     {
         cgi_resp_start = true;
         response << "HTTP/1.1 200 OK\r\n";
-        response << "Content-Type: text/html\r\n";
-        response << "Content-Length: " << cgi_data.str().size() << "\r\n";
-        response << "\r\n";
+        // response << "Content-Type: text/html\r\n";
+        // response << "Content-Length: " << cgi_data.str().size() << "\r\n";
+        // response << "\r\n";
         return response.str();
     }
     cgi_data.read(buffer, chunkSize);
@@ -304,7 +304,7 @@ std::string Response::get_file_ext(std::string path)
 
 bool    Response::is_cgi()
 {
-    if (req->loc_idx == -1 || req->request.method != "GET" || (req->request.uri.find(".php") == std::string::npos && req->request.uri.find(".py") == std::string::npos))
+    if (req->loc_idx == -1 || (req->request.uri.find(".php") == std::string::npos && req->request.uri.find(".py") == std::string::npos))
         return false;
     std::string cgi = req->request.uri.substr(req->request.uri.rfind(".") + 1, req->request.uri.size());
 
@@ -384,6 +384,7 @@ int    Response::DELETE(const std::string& path)
 std::string Response::getHdResp()
 {
     struct stat statbuf;
+    std::cerr << "here : " << req->request.uri << std::endl;
     std::stringstream response;
     stat( req->request.uri.c_str(), &statbuf );
     if (req->request.method == "DELETE" && req->request.status == 200)

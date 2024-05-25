@@ -103,18 +103,11 @@ void    MultiPlexer::acceptCli( int fd, std::vector<Serv> &servers, std::map<int
 
 int MultiPlexer::spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &reqMap )
 {
-    // std::cout << "plz : " << fd << " --- " << obj->read_size << std::endl; 
     char buff[obj->read_size];
     memset(buff, 0, sizeof(buff) );
     size_t bytes = read( fd, buff, sizeof(buff) - 1 );
     obj->clock_out = clock();
-    if ( (int)bytes == -1 )
-    {
-        std::cerr << "error read failed" << std::endl;
-        close( fd );
-        return 0;
-    }
-    else if ( !bytes )
+    if ( (int)bytes <= 0 )
     {
         delSockFrEpoll( fd );
         serv_cli.erase( fd );
@@ -190,8 +183,6 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
         }
         if ( itr->second->endOfResp || (int)bytesSent == -1 )
         {
-
-            // std::cerr << "ok destroyed  : " << fd << std::endl;
             delSockFrEpoll( fd );
             delete( itr->second );
             delete( obj );
@@ -237,7 +228,7 @@ void    MultiPlexer::webServLoop( std::vector<Serv> &servers )
     struct epoll_event evs[1024];
     std::map<int, ReqHandler*> reqMap;
     std::map<int, Response*> resMap;
-    std::map<int, clock_t>  timap;
+    // std::map<int, clock_t>  timap;
     signal(SIGPIPE, SIG_IGN);
     while (1)
     {
