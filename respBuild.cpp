@@ -12,8 +12,6 @@ std::string Response::ret_folder()
     size_t pos = req->request.uri.rfind(rt.back());
     std::string fldr = req->request.uri.substr(pos + rt.back().size(), req->request.uri.size());
     fldr == "" ? fldr : fldr += "/";
-
-
     return fldr;
 }
 
@@ -33,14 +31,11 @@ std::string     Response::list_folder()
         old_p = ret_folder();
         if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..")
             continue;
-        response << "<div>";
-        response << "<a href=\"";
+        response << "<div>" << "<a href=\"";
         if (req->loc_idx != -1)
             if (req->myServ.locations[req->loc_idx].name != "/")
                 response << req->myServ.locations[req->loc_idx].name << "/";
-        response << old_p << entry->d_name << "\">" << entry->d_name << "</a>";
-        response << "</div>";
-
+        response << old_p << entry->d_name << "\">" << entry->d_name << "</a>" << "</div>";
     }
     response << "</body>";
     closedir(dir);
@@ -95,10 +90,9 @@ void    Response::env_init()
 {
     std::stringstream s;
     std::stringstream ss;
-    this->env = (char **)malloc(sizeof(char *) * 11);
+    this->env = (char **)malloc(sizeof(char *) * 12);
     
     // std::string authType         = "AUTH_TYPE=Basic";/**/
-    // std::string contentLength    = "CONTENT_LENGTH=";
     // std::string contentType      = "CONTENT_TYPE=text/html";
     std::string gatewayInterface = "GATEWAY_INTERFACE=CGI/1.1";/**/
     std::string queryString      = "QUERY_STRING=";/**/
@@ -121,6 +115,7 @@ void    Response::env_init()
     // this->env[0] = strdup((authType + "").c_str());
     // this->env[0] = strdup((contentLength).c_str());
     this->env[0] = strdup((requestMethod + req->request.method).c_str());/**/
+    std::cerr << "******" <<this->env[0] << "*******"<< std::endl;
     this->env[1] = strdup((queryString + req->query).c_str());
     this->env[2] = strdup((redirectstatus).c_str());
     this->env[3] = strdup((scriptName + req->request.uri).c_str());
@@ -132,10 +127,23 @@ void    Response::env_init()
     this->env[7] = strdup((serverProtocol).c_str());/**/
     this->env[8] = strdup((pathInfo + req->pathInfo).c_str());/**/
     this->env[9] = strdup((cookie + req->cookie).c_str());/**/
-    this->env[10] = NULL;
+    // if (req->request.method != "POST")
+    //     this->env[10] = NULL;
 
-    for (int i = 0; i < 10; ++i)
-        std::cerr << this->env[i] << std::endl;
+    if (req->request.method == "POST")
+    {
+        std::stringstream ln;
+        ln << req->content_lenght;
+        std::string contentLength    = "CONTENT_LENGTH=";
+        this->env[10] = strdup((contentLength + ln.str()).c_str());/**/
+    }
+    else
+        this->env[10] = NULL;
+    this->env[11] = NULL;
+// std::cerr << "---------------" << std::endl;
+//     for (int i = 0; i < 10; ++i)
+//         std::cerr << this->env[i] << std::endl;
+// std::cerr << "---------------" << std::endl;
     // this->env[4] = strdup((pathInfo + "").c_str());
     // this->env[5] = strdup((pathTranslated + "").c_str());
     // this->env[7] = strdup((remoteAddr + "").c_str());
@@ -147,8 +155,6 @@ void    Response::env_init()
 
 void Response::exute_cgi()
 {
-    // std::cerr << " response " << std::endl;
-    
     char buffer[1024];
     std::string bdy;
     memset(buffer, 0, 1024);
@@ -158,39 +164,43 @@ void Response::exute_cgi()
         std::cerr << "Failed to create pipe" << std::endl;
         return;
     }
-    // std::cerr << "at open : "<< pipfd[0] << std::endl;
+    env_init();
     c_pid = fork();
-
     cgi_start = clock();
     if (c_pid == -1)
         return;
     else if (c_pid == 0)
     {
-        char *str[4];
+        char *str[3];
         dup2(pipfd[1], STDOUT_FILENO);
         // dup2(pipfd[1], STDERR_FILENO);
         close(pipfd[1]);
-
-        env_init();
+        if (req->request.method == "POST")
+        {
+            if ( req->pFile.is_open() )
+                req->pFile.close();
+            int fd = open( req->fName.c_str(),O_RDONLY | std::ios::binary);
+            // std::cerr << "name of file: "<<req->fName.c_str() << std::endl;
+            // std::cerr << fd << std::endl;
+            // char rd[21];
+            // read(fd, rd, 20);
+            // rd[20] = '\0';
+            // std::cerr << "======================" << std::endl;
+            // std::cerr << rd << std::endl;
+            // std::cerr << "======================" << std::endl;
+            dup2(fd, 0);
+            close (fd);
+            // write(0, "username=dd&title=dd", 20);
+        }
         if (req->request.uri.find(".php") != std::string::npos)
-        {
             str[0] = strdup("/usr/bin/php-cgi");
-            str[1] = strdup("-q");
-            str[2] = strdup(req->request.uri.c_str());
-            str[3] = NULL;
-        }
         else if (req->request.uri.find(".py") != std::string::npos)
-        {
             str[0] = strdup("/usr/bin/python3.10");
-            str[1] = strdup(req->request.uri.c_str());
-            str[2] = NULL;
-            str[3] = NULL;
-        }
-
+        str[1] = strdup(req->request.uri.c_str());
+        str[2] = NULL;
         struct epoll_event ev;
         ev.events = EPOLLIN;
         ev.data.fd = pipfd[0];
-        // std::cerr << " hhheeeeeehhh " << pipfd[0] << std::endl;
         int g = epoll_ctl( ep_fd, EPOLL_CTL_ADD, pipfd[0], &ev );
         if (g == -1)
             std::cerr << "Error adding file descriptor to epoll instance: " << strerror(errno) << std::endl;
@@ -201,21 +211,14 @@ void Response::exute_cgi()
             if (str[i] != NULL)
                 free(str[i]);
         }
-        // (void)child_ex;
         exit(1);
     }
     else
     {
         w_pid = waitpid(c_pid, &cgi_status, WNOHANG);
-        
-        // std::cerr << "++++++++++++cgi status :" << cgi_status << std::endl;
-
-        std::cerr << "w_pid: " << w_pid << std::endl << "c_pid: " << c_pid << std::endl;
         if (w_pid == 0) {
-                // Child process is still running
             std::cerr << "Child process is still running" << std::endl;
         } else if (w_pid == c_pid) {
-            // Child process has terminated
             if (WIFEXITED(cgi_status)) {
                 std::cerr << "Child process exited with status: " << WEXITSTATUS(cgi_status) << std::endl;
             } else {
@@ -239,29 +242,33 @@ std::string  Response::cgi_response()
     if (cgi_resp_start != true)
     {
         cgi_resp_start = true;
+        std::cerr << "+-+--+-++--+--++-+-+---+-" << std::endl;
+        std::cerr << cgi_data.str() << std::endl;
+        std::cerr << "+-+--+-++--+--++-+-+---+-" << std::endl;
         if ( cgi_data.str().find("Status: 302 Found") != std::string::npos )
         {
             std::string lc;
-            while ( getline(cgi_data, lc) )
-            {
-                if ( lc.find("Location: ") != std::string::npos )
-                    break;
-            }
-            response << "HTTP/1.1 " << 302 << "\r\n";
-            std::cerr << "|" << lc << "|" << std::endl;
-            response << lc;
-            // response << "\r\n";
+            // while ( getline(cgi_data, lc) )
+            // {
+            //     if ( lc.find("Location: ") != std::string::npos )
+            //         break;
+            // }
+
+            size_t pos = cgi_data.str().find("Location: ");
+            size_t end = cgi_data.str().find("\r\n");
+            if (pos != std::string::npos && end != std::string::npos)
+                lc = cgi_data.str().substr(pos, end - pos);
+            std::cerr << "+-+--+-++--+-          -++-+-+---+-" << std::endl;
+            std::cerr << lc <<std::endl;
+            std::cerr << "+-+--+-++--+-          -++-+-+---+-" << std::endl;
+            response << "HTTP/1.1 " << 302 << "\r\n" << "Status: 302 Found\r\n" << lc;
             endOfResp = 1;
             return response.str();
         }
         response << "HTTP/1.1 200 OK\r\n";
-        // response << "Content-Type: text/html\r\n";
-        // response << "Content-Length: " << cgi_data.str().size() << "\r\n";
-        // response << "\r\n";
         return response.str();
     }
     cgi_data.read(buffer, chunkSize);
-
     if (cgi_data.gcount())
         response.write(buffer, cgi_data.gcount());
     else
@@ -297,10 +304,6 @@ std::string     Response::read_from_a_file()
         response << "This File is not Found! Please Check the your default files.";
         endOfResp = 1;
         return response.str();
-        // creat a function that print the 404 err page if not found!
-        // req->uri_depon_cs( 404 );
-        // response << read_from_a_file();
-        // endOfResp = 1;
     }
     return response.str();
 }
@@ -328,7 +331,7 @@ bool    Response::is_cgi()
 
     std::string path = cgi_path;
 
-    if (req->request.uri.find(path) == 0 &&  req->loc_idx >= 0 && cgi_path.size())
+    if (req->request.uri.find(path) == 0 && req->loc_idx >= 0 && cgi_path.size())
         return true;
     return false;
 }
@@ -425,9 +428,6 @@ std::string Response::getHdResp()
             // req->uri_depon_cs( 200 );
             endOfResp = 1;
         }
-        // response << read_from_a_file();
-        // std::cerr << "DELETE" << std::endl;
-        // std::cerr << response.str() << std::endl;
         return response.str();
     }
     if (req->request.status == 301)
@@ -486,20 +486,7 @@ void    Response::getMethod()
     // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
     ssize_t bytesSent = send( cliSock, hdRes.c_str(), hdRes.size(), 0);
     if ( (int)bytesSent == -1 )
-    {
-        std::cout << "failed send" << std::endl;
-    }
-    else
-    {
-        std::cout << "sent : " << bytesSent << " bytes" <<std::endl;
-        // endOfResp = 1;
-        // std::cout << "data Sent Yes ......." << std::endl;
-        // delSockFrEpoll( evs[i].data.fd );
-        // delete( it->second );
-        // reqMap.erase( evs[i].data.fd );
-        // serv_cli.erase( evs[i].data.fd );
-        // close( evs[i].data.fd );
-    }
+        endOfResp = 1;
 }
 
 Response::Response( ReqHandler *_req, int _cliSock, int &ep_fd_ )

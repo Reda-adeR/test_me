@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <sys/wait.h>
 #include "reqHandler.hpp"
 #include <unistd.h>
 #include <fcntl.h>
@@ -33,8 +34,7 @@ class MultiPlexer {
         int     spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &reqMap );
         int     spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &resMap, std::map<int, ReqHandler*> &reqMap );
 
-        std::string read_from_a_pipe(int fd, bool &pipe_closed);
-
+        std::string read_from_a_pipe(int fd, bool &pipe_closed, int &c_pid);
 };
 
 #endif

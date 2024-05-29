@@ -38,9 +38,9 @@ std::string ReqHandler::fNameGenerator()
     if ( it != cType_ext.end() )
         fName += it->second;
     if ( loc_idx == -1 )
-        fName = myServ.root + "/" + fName;
+        fName = myServ.root + "/" + fName + ".txt";
     else
-        fName = myServ.locations[loc_idx].upload_path + "/" + fName;
+        fName = myServ.locations[loc_idx].upload_path + "/" + fName + ".txt";
     return fName;
 }
 
@@ -49,7 +49,7 @@ void    ReqHandler::pFileOpener()
     if ( bodyStartFound )
     {
         std::string fName = fNameGenerator();
-        pFile.open( fName.c_str(), std::ios::out | std::ios::binary );
+        pFile.open( fName.c_str(), std::ios::binary );//std::ios::out | 
         if ( !pFile.is_open() )
         {
             std::cerr << "Error could not open file to post !"<< std::endl;
@@ -110,10 +110,19 @@ int ReqHandler::iStillValid()
 
 void        ReqHandler::cLenght_post( std::string &str )
 {
+    std::cerr << "in CLENGHT" << std::endl;
+    std::cerr << str << std::endl;
     if ( !iStillValid() )
         return ( uri_depon_cs( 409 ) );
     // std::cout << "str.size() in cLenght POST : " << str.size() << std::endl;
-
+    // std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
+    //     // std::cerr << "print CGI : " << cgi << std::endl;
+    // if ( cgi != "php" && cgi != "py" )
+    // {
+    //     endOfRead = 1;
+    //     request.status = 201;
+    //     return ;
+    // }
     unsigned long long old_bytes_red = bytes_red;
     bytes_red += str.size();
     // std::cout << "          ++++++++++++++" << std::endl;
@@ -139,7 +148,7 @@ void        ReqHandler::cLenght_post( std::string &str )
         endOfRead = 1;
         request.status = 201;
         std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
-        std::cerr << "print CGI : " << cgi << std::endl;
+        // std::cerr << "print CGI : " << cgi << std::endl;
         if ( cgi != "php" && cgi != "py" )
             request.uri = "../../Desktop/webServ2.6/success.html";
     }
@@ -147,10 +156,20 @@ void        ReqHandler::cLenght_post( std::string &str )
 
 void        ReqHandler::tChunked_post( std::string &str )
 {
+    std::cerr << "in CHUNKED" << std::endl;
+    std::cerr << str << std::endl;
     while ( 50 )
     {
         if ( !iStillValid() )
             return ( uri_depon_cs( 409 ) );
+        // std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
+        // // std::cerr << "print CGI : " << cgi << std::endl;
+        // if ( cgi != "php" && cgi != "py" )
+        // {
+        //     endOfRead = 1;
+        //     request.status = 201;
+        //     return ;
+        // }
         if ( g )
         {
             g = 0;
@@ -171,7 +190,7 @@ void        ReqHandler::tChunked_post( std::string &str )
                 endOfRead = 1;
                 request.status = 201;
                 std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
-                std::cerr << "print CGI : " << cgi << std::endl;
+                // std::cerr << "print CGI : " << cgi << std::endl;
                 if ( cgi != "php" && cgi != "py" )
                     request.uri = "../../Desktop/webServ2.6/success.html";
                 return;
