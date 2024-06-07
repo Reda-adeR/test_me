@@ -175,9 +175,9 @@ void Fconf::checkServ( std::vector<std::string> &serv )
                 {
                     myserv.set_locations(serv, j);
                 }
-                catch(const std::exception& e)
+                catch( const std::exception& e )
                 {
-                    while ( word != ")" && j < serv.size() ) // if this is not found it keep going and break the other location
+                    while ( word != ")" && j < serv.size() )
                     {
                         std::istringstream adv( serv[j] );
                         adv >> word;
@@ -192,12 +192,10 @@ void Fconf::checkServ( std::vector<std::string> &serv )
         }
         if ( !flag_s["port"] || !flag_s["host"] || !flag_s["root"] )
             throw( std::out_of_range("Element missing in a server"));
-        // default params should be set before pushing the server in case something is missing
         if ( !serverDupCheck( myserv ) )
-        { // if myserv doesnt exist
+        {
             root_loc_ifndef( myserv );
             myServers.push_back( myserv );
-            std::cout << "all good the server is pushed to the container of servers" << std::endl;
         }
     }
     catch ( std::exception &e )
@@ -359,47 +357,10 @@ Fconf::Fconf ( const char *file )
     configf.close();
 }
 
-
-
-
-
-
-
-
 // Location Class functions down below
 
 Serv::Serv(std::vector<Serv>& _myServers): myServers(_myServers)
 {
-    // defErrP[400] = "../../Desktop/webServ2.6/errPages/err400.html";
-    // defErrP[401] = "../../Desktop/webServ2.6/errPages/err401.html";
-    // defErrP[402] = "../../Desktop/webServ2.6/errPages/err402.html";
-    // defErrP[403] = "../../Desktop/webServ2.6/errPages/err403.html";
-    // defErrP[404] = "../../Desktop/webServ2.6/errPages/err404.html";
-    // defErrP[405] = "../../Desktop/webServ2.6/errPages/err405.html";
-    // defErrP[406] = "../../Desktop/webServ2.6/errPages/err406.html";
-    // defErrP[407] = "../../Desktop/webServ2.6/errPages/err407.html";
-    // defErrP[408] = "../../Desktop/webServ2.6/errPages/err408.html";
-    // defErrP[409] = "../../Desktop/webServ2.6/errPages/err409.html";
-    // defErrP[410] = "../../Desktop/webServ2.6/errPages/err410.html";
-    // defErrP[411] = "../../Desktop/webServ2.6/errPages/err411.html";
-    // defErrP[412] = "../../Desktop/webServ2.6/errPages/err412.html";
-    // defErrP[413] = "../../Desktop/webServ2.6/errPages/err413.html";
-    // defErrP[414] = "../../Desktop/webServ2.6/errPages/err414.html";
-    // defErrP[415] = "../../Desktop/webServ2.6/errPages/err415.html";
-    // defErrP[416] = "../../Desktop/webServ2.6/errPages/err416.html";
-    // defErrP[417] = "../../Desktop/webServ2.6/errPages/err417.html";
-    // defErrP[418] = "../../Desktop/webServ2.6/errPages/err418.html";
-    // defErrP[421] = "../../Desktop/webServ2.6/errPages/err421.html";
-    // defErrP[422] = "../../Desktop/webServ2.6/errPages/err422.html";
-    // defErrP[423] = "../../Desktop/webServ2.6/errPages/err423.html";
-    // defErrP[424] = "../../Desktop/webServ2.6/errPages/err424.html";
-    // defErrP[425] = "../../Desktop/webServ2.6/errPages/err425.html";
-    // defErrP[426] = "../../Desktop/webServ2.6/errPages/err426.html";
-    // defErrP[428] = "../../Desktop/webServ2.6/errPages/err428.html";
-    // defErrP[429] = "../../Desktop/webServ2.6/errPages/err429.html";
-    // defErrP[431] = "../../Desktop/webServ2.6/errPages/err431.html";
-    // defErrP[500] = "../../Desktop/webServ2.6/errPages/err500.html";
-    // defErrP[501] = "../../Desktop/webServ2.6/errPages/err501.html";
 }
 
 int checkRealPath( std::string &str, int p )
@@ -415,24 +376,10 @@ int checkRealPath( std::string &str, int p )
         }
         std::string s = rPath;
         std::string pwd = rPwd;
-        // std::vector<std::string> vc = split_uri( s );
-        // std::vector<std::string> vcPwd = split_uri( pwd );
-        if ( p && !isDirectory( s ) ) //|| vc.size() < 3 || vc.front() != "nfs" )
+        if ( p && !isDirectory( s ) )
             return 0;
         if ( s == rPwd )
             return 0;
-        // if ( (vc.size() == vcPwd.size() && vc.back() == vcPwd.back())
-        //     || (vc.size() > vcPwd.size() && vc[vcPwd.size() - 1] == vcPwd.back())
-        //     || (vc.size() < vcPwd.size()) )
-        //     return 0;
-        // if ( vc.size() >= 3 && vcPwd.size() >= 3 )
-        // {
-        //     for ( int i = 0 ; i < 3 ; i++ )
-        //         if ( vc[i] != vcPwd[i] )
-        //             return 0;
-        // }
-        // else
-        //     return 0;
         str = rPath;
         return 1;
     }
@@ -567,7 +514,6 @@ void    Serv::set_locations( std::vector<std::string>& serv, size_t& j )
     flag_s.insert(std::make_pair("upload_path", 0));
     while ( j < serv.size() && word != ")" )
     {
-        // std::cout << "line : " << serv[j] << std::endl;
         std::istringstream tmp( serv[j++] );
         tmp >> word;
         if (word == "root" && !flag_s[word])
@@ -575,8 +521,6 @@ void    Serv::set_locations( std::vector<std::string>& serv, size_t& j )
             save.root = loc_set_help( flag_s, tmp, word, 0 );
             if ( !checkRealPath( save.root, 1 ) )
                 throw ( std::out_of_range("the root in this location : " + save.name + " is Invalid !") );
-            // if ( !save.upload_path.size() )
-            //     save.upload_path = save.root;
         }
         else if (word == "get" && !flag_s[word])
             save.get = loc_set_help( flag_s, tmp, word, 1 );

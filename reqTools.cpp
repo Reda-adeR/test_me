@@ -59,7 +59,7 @@ int checkUrirPath( std::string &str )
             std::cerr << "getcwd reqhandler error" << std::endl;
             return 0;
         }
-        str = rPath; // recently changed
+        str = rPath;
         std::string pwd = rPwd;
         if ( str == rPwd )
             return 0;
@@ -72,7 +72,6 @@ void    ReqHandler::checkRetIdx()
 {
     if ( loc_idx != -1 && myServ.locations[loc_idx].redirection.size() && request.method == "GET" ) // Method get check this
     {
-        std::cout << "location name --> " << myServ.locations[loc_idx].name << std::endl;
         request.uri = myServ.locations[loc_idx].redirection;
         request.status = 301;
     }
@@ -82,7 +81,6 @@ void    ReqHandler::checkRetIdx()
         {
             if ( !myServ.locations[loc_idx].index.size() )
             {
-                std::cout << "HERE locIDX : " << loc_idx << std::endl;
                 if ( myServ.locations[loc_idx].autoidx == "on" )
                     request.status = 200;
                 else
@@ -125,28 +123,23 @@ void    ReqHandler::uri_depon_cs( int code )
     {
         std::cerr << "getcwd reqhandler error" << std::endl;
         request.status = 404;
-        request.uri = "ERROR";
         endOfRead = 1;
         return ;
     }
     std::string rp = rPwd;
     defErrP[400] = rp + "/errPages/err400.html";
-    defErrP[401] = rp + "/errPages/err401.html";
-    defErrP[402] = rp + "/errPages/err402.html";
     defErrP[403] = rp + "/errPages/err403.html";
     defErrP[404] = rp + "/errPages/err404.html";
     defErrP[405] = rp + "/errPages/err405.html";
     defErrP[408] = rp + "/errPages/err408.html";
     defErrP[409] = rp + "/errPages/err409.html";
-    defErrP[410] = rp + "/errPages/err410.html";
     defErrP[411] = rp + "/errPages/err411.html";
     defErrP[413] = rp + "/errPages/err413.html";
     defErrP[414] = rp + "/errPages/err414.html";
-    defErrP[415] = rp + "/errPages/err415.html";
     defErrP[500] = rp + "/errPages/err500.html";
     defErrP[501] = rp + "/errPages/err501.html";
     defErrP[505] = rp + "/errPages/err505.html";
-    defErrP[200] = rp + "/success.html";
+    defErrP[201] = rp + "/success.html";
 
     std::map<int, std::string>::iterator it = myServ.errorpage.find( code );
 
@@ -157,7 +150,6 @@ void    ReqHandler::uri_depon_cs( int code )
         request.uri = it->second;
     else
         request.uri = defErrP[ code ];
-    // std::cerr << request.uri << std::endl;
 }
 
 int hexaToDeci( std::string &s )

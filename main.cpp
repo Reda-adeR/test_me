@@ -13,17 +13,6 @@ std::string randomStr()
     return ret;
 }
 
-void    lcs_num( std::vector<Serv> servers )
-{
-    for ( size_t i = 0 ; i < servers.size() ; i++ )
-    {
-        int n = 0;
-        for ( size_t j = 0 ; j < servers[i].locations.size() ; j++ )
-            n++;
-        std::cout << "server " << i + 1 << " has : " << n << " location" << std::endl;
-    }
-}
-
 int main( int ac, char **av )
 {        
     try
@@ -37,7 +26,6 @@ int main( int ac, char **av )
             servers = configFile.getServers();
             if ( !servers.size() )
                 throw std::runtime_error( "No correct server found, re-check your config file" );
-            lcs_num ( servers );
             MultiPlexer mplex( servers );
             mplex.webServLoop( servers );
         }

@@ -2,6 +2,13 @@
 #ifndef RESPBUILDER_HPP
 #define RESPBUILDER_HPP
 
+#include <sys/stat.h>
+#include <stdlib.h> 
+#include <stdio.h> 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h> // for signal handling
+#include <sys/time.h> // for timeval
 #include "reqHandler.hpp"
 #include "multiPlex.hpp"
 
@@ -27,17 +34,18 @@ class Response {
         Response( ReqHandler *_req, int _cliSock, int &ep_fd_ );
         ~Response();
         void    getMethod();
-        void    exute_cgi();
+        void    execute_cgi();
+        void    child_proc();
         bool    is_cgi();
         int DELETE(const std::string& path);
         std::string  cgi_response();
         std::string  read_from_a_file();
-        // std::string  read_from_a_pipe();
         std::string  list_folder();
         std::string ret_folder();
         std::string get_file_ext(std::string path);
         std::string getHdResp();
         void    env_init();
+        
 };
 
 #endif

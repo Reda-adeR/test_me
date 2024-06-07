@@ -38,9 +38,9 @@ std::string ReqHandler::fNameGenerator()
     if ( it != cType_ext.end() )
         fName += it->second;
     if ( loc_idx == -1 )
-        fName = myServ.root + "/" + fName + ".txt";
+        fName = myServ.root + "/" + fName;
     else
-        fName = myServ.locations[loc_idx].upload_path + "/" + fName + ".txt";
+        fName = myServ.locations[loc_idx].upload_path + "/" + fName;
     return fName;
 }
 
@@ -49,7 +49,7 @@ void    ReqHandler::pFileOpener()
     if ( bodyStartFound )
     {
         std::string fName = fNameGenerator();
-        pFile.open( fName.c_str(), std::ios::binary );//std::ios::out | 
+        pFile.open( fName.c_str(), std::ios::binary );
         if ( !pFile.is_open() )
         {
             std::cerr << "Error could not open file to post !"<< std::endl;
@@ -69,9 +69,6 @@ long long getSize( std::string str )
     std::istringstream ss( str );
     long long ret;
     ss >> std::hex >> ret;
-    // if ( ret == 0 )
-    //     std::cerr << "getSize : " <<str << std::endl;
-    // std::cerr << "ret here : " << ret << std::endl;
     return ret;
 }
 
@@ -110,32 +107,14 @@ int ReqHandler::iStillValid()
 
 void        ReqHandler::cLenght_post( std::string &str )
 {
-    std::cerr << "in CLENGHT" << std::endl;
-    std::cerr << str << std::endl;
     if ( !iStillValid() )
         return ( uri_depon_cs( 409 ) );
-    // std::cout << "str.size() in cLenght POST : " << str.size() << std::endl;
-    // std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
-    //     // std::cerr << "print CGI : " << cgi << std::endl;
-    // if ( cgi != "php" && cgi != "py" )
-    // {
-    //     endOfRead = 1;
-    //     request.status = 201;
-    //     return ;
-    // }
+
     unsigned long long old_bytes_red = bytes_red;
     bytes_red += str.size();
-    // std::cout << "          ++++++++++++++" << std::endl;
-    // std::cout << "cont_len = " << content_lenght << std::endl;
-    // std::cout << "before increm bytes_red = " << old_bytes_red << std::endl;
-    // std::cout << "bytes_red = " << bytes_red << std::endl;
-    // std::cout << "          ++++++++++++++" << std::endl;
 
     if ( bytes_red > myServ.limit )
-    {
-        deleteFile();
-        return ( uri_depon_cs( 413 ) );
-    }
+        return ( deleteFile(), uri_depon_cs( 413 ) );
     if ( bytes_red > content_lenght )
     {
         std::string tmp = str.substr( 0, content_lenght - old_bytes_red );
@@ -145,31 +124,20 @@ void        ReqHandler::cLenght_post( std::string &str )
         pFile.write( str.c_str(), str.size() );
     if ( bytes_red >= content_lenght )
     {
+        std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
+        if ( cgi != "php" && cgi != "py" )
+            return ( uri_depon_cs( 201 ) );
         endOfRead = 1;
         request.status = 201;
-        std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
-        // std::cerr << "print CGI : " << cgi << std::endl;
-        if ( cgi != "php" && cgi != "py" )
-            request.uri = "../../Desktop/webServ2.6/success.html";
     }
 }
 
 void        ReqHandler::tChunked_post( std::string &str )
 {
-    std::cerr << "in CHUNKED" << std::endl;
-    std::cerr << str << std::endl;
     while ( 50 )
     {
         if ( !iStillValid() )
             return ( uri_depon_cs( 409 ) );
-        // std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
-        // // std::cerr << "print CGI : " << cgi << std::endl;
-        // if ( cgi != "php" && cgi != "py" )
-        // {
-        //     endOfRead = 1;
-        //     request.status = 201;
-        //     return ;
-        // }
         if ( g )
         {
             g = 0;
@@ -187,12 +155,11 @@ void        ReqHandler::tChunked_post( std::string &str )
                 return ( uri_depon_cs( 500 ) );
             if ( !chunk_size )
             {
+                std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
+                if ( cgi != "php" && cgi != "py" )
+                    return ( uri_depon_cs( 201 ) );
                 endOfRead = 1;
                 request.status = 201;
-                std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
-                // std::cerr << "print CGI : " << cgi << std::endl;
-                if ( cgi != "php" && cgi != "py" )
-                    request.uri = "../../Desktop/webServ2.6/success.html";
                 return;
             }
             p += 2;
@@ -214,15 +181,6 @@ void        ReqHandler::tChunked_post( std::string &str )
                 read_size = chunk_size - size_counter + 1;
             end_of_chunk = 1;
             return ;
-        }
-        else if ( size_counter > chunk_size )
-        {
-            std::string s = str.substr( 0, chunk_size );
-            pFile.write( s.c_str(), s.size() );
-            str.erase( 0, chunk_size );
-            g = 1;
-            end_of_chunk = 0;
-            size_counter = 0;
         }
         else
         {

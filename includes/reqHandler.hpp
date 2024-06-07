@@ -4,19 +4,11 @@
 
 #include "fconf.hpp"
 #include <sys/socket.h>
-#include <string>
-#include <unistd.h>
-#include <iostream>
-#include <sstream>
-#include <map>
-#include <vector>
 #include <algorithm>
-#include <string.h>
 #include <dirent.h>
 #include <netinet/in.h>
 #include <fcntl.h>
 
-// extern int read_size;
 std::string decodeUri( std::string str );
 int checkUrirPath( std::string &str );
 int checkUri( std::string &str );

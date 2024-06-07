@@ -41,59 +41,14 @@ std::string     Response::list_folder()
     closedir(dir);
     endOfResp = 1;
     res << "Content-Length: " << response.str().size() << "\r\n\r\n" << response.str();
-    std::cerr<<res.str()<<std::endl;
     return res.str();
 }
 
-#include<stdlib.h> 
-#include<unistd.h> 
-#include<stdio.h> 
-#include<fcntl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <signal.h> // for signal handling
-
-#include <sys/time.h> // for timeval
-
-// volatile sig_atomic_t timeout_flag = 0;
-
-// // Signal handler function for the child process
-// void child_timeout_handler(int) {
-//     timeout_flag = 1;
-// }
-
-/*
-    this->_env["AUTH_TYPE"] = headers["Authorization"];
-	this->_env["REDIRECT_STATUS"] = "200"; //Security needed to execute php-cgi
-	this->_env["GATEWAY_INTERFACE"] = "CGI/1.1";
-	this->_env["SCRIPT_NAME"] = config.getPath();
-	this->_env["SCRIPT_FILENAME"] = config.getPath();
-	this->_env["REQUEST_METHOD"] = request.getMethod();
-	this->_env["CONTENT_LENGTH"] = to_string(this->_body.length());
-	this->_env["CONTENT_TYPE"] = headers["Content-Type"];
-	this->_env["PATH_INFO"] = request.getPath(); //might need some change, using config path/contentLocation
-	this->_env["PATH_TRANSLATED"] = request.getPath(); //might need some change, using config path/contentLocation
-	this->_env["QUERY_STRING"] = request.getQuery();
-	this->_env["REMOTEaddr"] = to_string(config.getHostPort().host);
-	this->_env["REMOTE_IDENT"] = headers["Authorization"];
-	this->_env["REMOTE_USER"] = headers["Authorization"];
-	this->_env["REQUEST_URI"] = request.getPath() + request.getQuery();
-	this->_env["SERVER_NAME"] = headers["Hostname"];
-	this->_env["SERVER_NAME"] = this->_env["REMOTEaddr"];
-	this->_env["SERVER_PORT"] = to_string(config.getHostPort().port);
-	this->_env["SERVER_PROTOCOL"] = "HTTP/1.1";
-	this->_env["SERVER_SOFTWARE"] = "Weebserv/1.0";
-	this->_env.insert(config.getCgiParam().begin(), config.getCgiParam().end());
-*/
-
 void    Response::env_init()
 {
-    std::stringstream s;
     std::stringstream ss;
-    this->env = (char **)malloc(sizeof(char *) * 12);
+    this->env = (char **)malloc(sizeof(char *) * 13);
     
-    // std::string authType         = "AUTH_TYPE=Basic";/**/
-    // std::string contentType      = "CONTENT_TYPE=text/html";
     std::string gatewayInterface = "GATEWAY_INTERFACE=CGI/1.1";/**/
     std::string queryString      = "QUERY_STRING=";/**/
     std::string redirectstatus   = "REDIRECT_STATUS=200";/**/
@@ -104,128 +59,91 @@ void    Response::env_init()
     std::string serverProtocol   = "SERVER_PROTOCOL=HTTP/1.1";/**/
     std::string pathInfo         = "PATH_INFO=";/**/
     std::string cookie           = "HTTP_COOKIE=";/**/
-
-    // std::string pathTranslated   = "PATH_TRANSLATED=/var/www/html/resource";
-    // std::string remoteAddr       = "REMOTE_ADDR=192.168.1.100";
-    // std::string remoteHost       = "REMOTE_HOST=example.com";
-    // std::string remoteIdent      = "REMOTE_IDENT=username";
-    // std::string remoteUser       = "REMOTE_USER=user";
-    // std::string serverSoftware   = "SERVER_SOFTWARE=Apache/2.4.41 (Unix)";
-
-    // this->env[0] = strdup((authType + "").c_str());
-    // this->env[0] = strdup((contentLength).c_str());
+     std::string contType         = "CONTENT_TYPE=";/**/
     this->env[0] = strdup((requestMethod + req->request.method).c_str());/**/
-    std::cerr << "******" <<this->env[0] << "*******"<< std::endl;
     this->env[1] = strdup((queryString + req->query).c_str());
     this->env[2] = strdup((redirectstatus).c_str());
     this->env[3] = strdup((scriptName + req->request.uri).c_str());
     this->env[4] = strdup((serverName).c_str());/**/
+    this->env[5] = strdup((contType + req->cType).c_str());/**/
     ss << serverPort << req->myServ.port;
-    this->env[5] = strdup(ss.str().c_str()); /**/  
-    // this->env[6] = strdup((contentType).c_str());/**/
-    this->env[6] = strdup((gatewayInterface).c_str());/**/
-    this->env[7] = strdup((serverProtocol).c_str());/**/
-    this->env[8] = strdup((pathInfo + req->pathInfo).c_str());/**/
-    this->env[9] = strdup((cookie + req->cookie).c_str());/**/
-    // if (req->request.method != "POST")
-    //     this->env[10] = NULL;
-
+    this->env[6] = strdup(ss.str().c_str()); /**/  
+    this->env[7] = strdup((gatewayInterface).c_str());/**/
+    this->env[8] = strdup((serverProtocol).c_str());/**/
+    this->env[9] = strdup((pathInfo + req->pathInfo).c_str());/**/
+    this->env[10] = strdup((cookie + req->cookie).c_str());/**/
     if (req->request.method == "POST")
     {
         std::stringstream ln;
         ln << req->content_lenght;
         std::string contentLength    = "CONTENT_LENGTH=";
-        this->env[10] = strdup((contentLength + ln.str()).c_str());/**/
+        this->env[11] = strdup((contentLength + ln.str()).c_str());/**/
     }
     else
-        this->env[10] = NULL;
-    this->env[11] = NULL;
-// std::cerr << "---------------" << std::endl;
-//     for (int i = 0; i < 10; ++i)
-//         std::cerr << this->env[i] << std::endl;
-// std::cerr << "---------------" << std::endl;
-    // this->env[4] = strdup((pathInfo + "").c_str());
-    // this->env[5] = strdup((pathTranslated + "").c_str());
-    // this->env[7] = strdup((remoteAddr + "").c_str());
-    // this->env[8] = strdup((remoteHost + "").c_str());
-    // this->env[9] = strdup((remoteIdent + "").c_str());
-    // this->env[10] = strdup((remoteUser + "").c_str());
-    // this->env[16] = strdup((serverSoftware + "").c_str());
+        this->env[11] = NULL;
+    this->env[12] = NULL;
 }
 
-void Response::exute_cgi()
+void Response::child_proc()
+{
+    char *str[3];
+    struct epoll_event ev;
+    ev.data.fd = pipfd[0];
+    int g = epoll_ctl( ep_fd, EPOLL_CTL_ADD, pipfd[0], &ev );
+    if (g == -1)
+        throw std::runtime_error("CGI execution failed");
+    close(pipfd[0]);
+    dup2(pipfd[1], STDOUT_FILENO);
+    close(pipfd[1]);
+    if (req->request.method == "POST")
+    {
+        if ( req->pFile.is_open())
+            req->pFile.close();
+        int fd = open( req->fName.c_str() ,O_RDONLY | std::ios::binary);
+        dup2(fd, 0);
+        close (fd);
+    }
+    if (req->request.uri.find(".php") != std::string::npos)
+        str[0] = strdup("/usr/bin/php-cgi");
+    else if (req->request.uri.find(".py") != std::string::npos)
+        str[0] = strdup("/usr/bin/python3");
+    str[1] = strdup(req->request.uri.c_str());
+    str[2] = NULL;
+    if (execve(str[0], str, env) == -1)
+        throw std::runtime_error("CGI execution failed");
+    for (int i = 0; i < 3; ++i)
+    {
+        if (str[i] != NULL)
+            free(str[i]);
+    }
+    exit(127);
+}
+
+void Response::execute_cgi()
 {
     char buffer[1024];
     std::string bdy;
     memset(buffer, 0, 1024);
     
     if (pipe(pipfd) == -1)
-    {
-        std::cerr << "Failed to create pipe" << std::endl;
-        return;
-    }
+        throw std::runtime_error("CGI execution failed");
+
     env_init();
     c_pid = fork();
     cgi_start = clock();
     if (c_pid == -1)
-        return;
+        throw std::runtime_error("CGI execution failed");
     else if (c_pid == 0)
-    {
-        char *str[3];
-        dup2(pipfd[1], STDOUT_FILENO);
-        // dup2(pipfd[1], STDERR_FILENO);
-        close(pipfd[1]);
-        if (req->request.method == "POST")
-        {
-            if ( req->pFile.is_open() )
-                req->pFile.close();
-            int fd = open( req->fName.c_str(),O_RDONLY | std::ios::binary);
-            // std::cerr << "name of file: "<<req->fName.c_str() << std::endl;
-            // std::cerr << fd << std::endl;
-            // char rd[21];
-            // read(fd, rd, 20);
-            // rd[20] = '\0';
-            // std::cerr << "======================" << std::endl;
-            // std::cerr << rd << std::endl;
-            // std::cerr << "======================" << std::endl;
-            dup2(fd, 0);
-            close (fd);
-            // write(0, "username=dd&title=dd", 20);
-        }
-        if (req->request.uri.find(".php") != std::string::npos)
-            str[0] = strdup("/usr/bin/php-cgi");
-        else if (req->request.uri.find(".py") != std::string::npos)
-            str[0] = strdup("/usr/bin/python3.10");
-        str[1] = strdup(req->request.uri.c_str());
-        str[2] = NULL;
-        struct epoll_event ev;
-        ev.events = EPOLLIN;
-        ev.data.fd = pipfd[0];
-        int g = epoll_ctl( ep_fd, EPOLL_CTL_ADD, pipfd[0], &ev );
-        if (g == -1)
-            std::cerr << "Error adding file descriptor to epoll instance: " << strerror(errno) << std::endl;
-        if (execve(str[0], str, env) == -1) {
-            std::cerr << "Failed to execute CGI script" << std::endl;
-        }
-        for (int i = 0; i < 3; ++i) {
-            if (str[i] != NULL)
-                free(str[i]);
-        }
-        exit(1);
-    }
+        child_proc();
     else
     {
         w_pid = waitpid(c_pid, &cgi_status, WNOHANG);
-        if (w_pid == 0) {
-            std::cerr << "Child process is still running" << std::endl;
-        } else if (w_pid == c_pid) {
-            if (WIFEXITED(cgi_status)) {
-                std::cerr << "Child process exited with status: " << WEXITSTATUS(cgi_status) << std::endl;
-            } else {
-                std::cerr << "Child process exited abnormally" << std::endl;;
-            }
-        } else {
-            std::cerr << "waitpid failed" << std::endl;
+        if (w_pid == c_pid)
+        {
+            if (WIFEXITED(cgi_status))
+                throw std::runtime_error("CGI execution failed");
+            else
+                throw std::runtime_error("CGI execution failed");
         }
     }
     close(pipfd[1]);
@@ -234,6 +152,7 @@ void Response::exute_cgi()
 std::string  Response::cgi_response()
 {
     std::stringstream response;
+    std::string hdrs;
 
     const int chunkSize = 1024;
     char buffer[chunkSize];
@@ -242,30 +161,24 @@ std::string  Response::cgi_response()
     if (cgi_resp_start != true)
     {
         cgi_resp_start = true;
-        std::cerr << "+-+--+-++--+--++-+-+---+-" << std::endl;
-        std::cerr << cgi_data.str() << std::endl;
-        std::cerr << "+-+--+-++--+--++-+-+---+-" << std::endl;
-        if ( cgi_data.str().find("Status: 302 Found") != std::string::npos )
+        response << "HTTP/1.1 ";
+        if ( cgi_data.str().find("Status: ") != std::string::npos )
         {
-            std::string lc;
-            // while ( getline(cgi_data, lc) )
-            // {
-            //     if ( lc.find("Location: ") != std::string::npos )
-            //         break;
-            // }
-
-            size_t pos = cgi_data.str().find("Location: ");
-            size_t end = cgi_data.str().find("\r\n");
-            if (pos != std::string::npos && end != std::string::npos)
-                lc = cgi_data.str().substr(pos, end - pos);
-            std::cerr << "+-+--+-++--+-          -++-+-+---+-" << std::endl;
-            std::cerr << lc <<std::endl;
-            std::cerr << "+-+--+-++--+-          -++-+-+---+-" << std::endl;
-            response << "HTTP/1.1 " << 302 << "\r\n" << "Status: 302 Found\r\n" << lc;
+            response << cgi_data.str().substr(cgi_data.str().find("Status: ") + 8, 3) << "\r\n";
+            hdrs = cgi_data.str().substr(0, cgi_data.str().find("\r\n\r\n") + 4);
+            response << hdrs;
             endOfResp = 1;
             return response.str();
         }
-        response << "HTTP/1.1 200 OK\r\n";
+        else
+        {
+            response << "200 OK\r\n";
+            if (req->request.uri.find(".py") != std::string::npos)
+            {
+                response << "Content-Type: text/html\r\n";
+                response << "Content-Length: " << cgi_data.str().size() << "\r\n\r\n";
+            }
+        }
         return response.str();
     }
     cgi_data.read(buffer, chunkSize);
@@ -336,11 +249,6 @@ bool    Response::is_cgi()
     return false;
 }
 
-#include <iostream>
-#include <unistd.h>
-#include <dirent.h>
-#include <sys/stat.h>
-
 int    Response::DELETE(const std::string& path)
 {
     struct stat st;
@@ -348,7 +256,6 @@ int    Response::DELETE(const std::string& path)
 
     if (folder == false)
     {
-        // return another number to response with 404 -- differently than 403
         if (access(path.c_str(), W_OK) == 0)
             unlink(path.c_str());
         else
@@ -390,7 +297,6 @@ int    Response::DELETE(const std::string& path)
                 return 1;
         }
     }
-
     closedir(dir);
     if (access(path.c_str(), W_OK) == 0)
         rmdir(path.c_str());
@@ -402,7 +308,6 @@ int    Response::DELETE(const std::string& path)
 std::string Response::getHdResp()
 {
     struct stat statbuf;
-    std::cerr << "here : " << req->request.uri << std::endl;
     std::stringstream response;
     stat( req->request.uri.c_str(), &statbuf );
     if (req->request.method == "DELETE" && req->request.status == 200)
@@ -425,7 +330,6 @@ std::string Response::getHdResp()
         {
             response << "HTTP/1.1 " << 204 << "No Content";
             response << "\r\n\r\n";
-            // req->uri_depon_cs( 200 );
             endOfResp = 1;
         }
         return response.str();
@@ -450,7 +354,27 @@ std::string Response::getHdResp()
             if (is_cgi() == true && folder == false)
             {
                 cgi_on = true;
-                exute_cgi();
+                try
+                {
+                    execute_cgi();
+                }
+                catch(const std::exception& e)
+                {
+                    struct stat statbuf;
+                    req->uri_depon_cs(500);
+                    if ( access(req->request.uri.c_str(), F_OK) )
+                        req->uri_depon_cs( 404 );
+                    stat( req->request.uri.c_str(), &statbuf );
+                    response << "HTTP/1.1 " << req->request.status << " OK\r\n";
+                    response << "Content-Type: text/html\r\n";
+                    // response << "Content-Type: " << req->cType << "\r\n";
+                    response << "Content-Length: ";
+                    response << statbuf.st_size;
+                    response << "\r\n";
+                    response << "\r\n";
+                    cgi_on = false;
+                    endOfResp = 0;
+                }
                 return response.str();
             }
         }
@@ -459,13 +383,8 @@ std::string Response::getHdResp()
         req->uri_depon_cs( 403 );
     stat( req->request.uri.c_str(), &statbuf );
     response << "HTTP/1.1 " << req->request.status << " OK\r\n";
-    // std::cerr<<"******************"<<req->request.status<<"**********************"<<std::endl;
-
-    // std::cerr<<"here status : " << req->request.status <<std::endl;
-    // std::cerr<<"here uri : " << req->request.uri <<std::endl;
     response << "Content-Type: ";
     response << get_file_ext(req->request.uri) << "\r\n";
-    // response << "text/html" << "\r\n";
     if (folder)
         return response.str();
     response << "Content-Length: ";
@@ -474,16 +393,12 @@ std::string Response::getHdResp()
     else
         response << statbuf.st_size;
     response << "\r\n\r\n";
-    // std::cerr<<statbuf.st_size<<std::endl;
     return response.str();
 }
 
 void    Response::getMethod()
 {
     std::string hdRes = getHdResp();
-    // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
-    // std::cerr<<hdRes;
-    // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
     ssize_t bytesSent = send( cliSock, hdRes.c_str(), hdRes.size(), 0);
     if ( (int)bytesSent == -1 )
         endOfResp = 1;
@@ -540,5 +455,4 @@ Response::Response( ReqHandler *_req, int _cliSock, int &ep_fd_ )
 
 Response::~Response()
 {
-    std::cout << " Response destructor called" << std::endl;
 }

@@ -1,55 +1,5 @@
 
 #include "includes/reqHandler.hpp"
-// to do 
-/*
---- chmouk test
-      -arabic char becomes  %65 needs to be decoded from hexadecimal to decimal 
--- redirectiom  folder without slash ---> redirect with location with slash
--- /../../../ postman test ---- > should stop in the root max previous
-
-
-
-
----- kamals  --- -// redirection fails // index // --fixed
-
-    -- redirection must recheck the path from the beginning, getFinalUri
-    -- same for index ---
-
-    
-
-
-
-
-    -- do a uri decoder
-    -- '%20 %20' -- a file named %20.txt
-    -- check and parse path -real path
-    -- getServer by servname host ...
-    -- post continuation
-    -- time out checker
-
-
- after POST
- * have to set timeout logic
- * have to set boundarie to not implemented
- * other things than clenght and chunked too
- * server matching
- * fconf parsing host/ servname ---> host 127.0.0.1
- * set host in multiplexer first part
-saad's tests
-    time out setter nc printf ""
-    time out POST meth with clenght less 
-    code wait pid
-
- // TESTS 
- -- GET http://localhost:5555/ POSTMAN -- > with a body "Error: read/write ECONNRESET"
- -- Parse CGI_PATH into multiple CGI --- And also make sure the CGI_PATH parsing is good
- -- fixing the CHMOD of an ERROR PAGE to 000 --- 
- -- Checking permission of execution for CGI files
-*/
-// START OF POST FUNCTIONS 
-// Still not sure how host/ServerName should work, how to bind
-// it works with the addresses 127.0.0.1 and all 
-// END OF POST FUNCTIONS 
 
 // GETTERS START
 int     ReqHandler::getHeaderVal( std::string key, std::string &val )
@@ -91,7 +41,6 @@ std::string ReqHandler::getFullUri( std::vector<std::string> &spl_uri, std::stri
 void ReqHandler::getFinalUri( std::string str )
 {
     std::vector<std::string> splited_uri = split_uri( str );
-    std::cout << "uri to split >>>>>>>> " << str << std::endl;
     if ( !splited_uri.size() )
     {
         std::string loc_str = "/";
@@ -172,7 +121,6 @@ void    ReqHandler::fillReqHeaders()
 int    ReqHandler::parseHeaders()
 {
     getHeaderVal( "Cookie:", cookie );
-    std::cerr << "cookiiiiiie : " << cookie << std::endl;
     if ( !getHeaderVal( "Host:", value ) )
         return ( uri_depon_cs( 400 ), 0 );
     else
@@ -208,17 +156,12 @@ int    ReqHandler::parseHeaders()
             }
         }
     }
-    std::cout << "parse Headers here" << std::endl;
     return 1;
 }
 
 Serv    ReqHandler::getServer()
 {
     std::vector<Serv>   same_host_servers;
-    // push all the servers with same port to this vector
-    // then if its size is 1 return it
-    // size 0 idont think is possible
-    // else look for server via serverName
     for ( size_t i = 0 ; i < servs.size() ; i++ )
     {
         std::stringstream ss;
@@ -226,13 +169,9 @@ Serv    ReqHandler::getServer()
         std::string concat = servs[i].host + ":" + ss.str();
         if ( servs[i].host == host || concat == host )
             same_host_servers.push_back( servs[i] );
-            // return servs[i];
     }
     if ( same_host_servers.size() == 1 )
         return same_host_servers.front();
-    // for ( size_t i = 0 ; i < servs.size() ; i++ )
-    //     if ( servs[i].servName == host )
-    //         return servs[i];
     for ( size_t i = 0 ; i < same_host_servers.size() ; i++ )
         if ( same_host_servers[i].servName == host )
             return same_host_servers[i];
@@ -259,7 +198,7 @@ void    ReqHandler::storeQuery()
     size_t p = request.uri.find('?');
     if ( p != std::string::npos )
     {
-        query = request.uri.substr( p );
+        query = request.uri.substr( p + 1 );
         request.uri = request.uri.substr( 0, p );
     }
     p = request.uri.find(".php");
@@ -280,7 +219,6 @@ void    ReqHandler::storeQuery()
 
 void    ReqHandler::parse_request()
 {
-    std::cout << "REQUEST PARSING -------------" << std::endl;
     if ( !reqHds.size() )
         return( uri_depon_cs( 400 ) );
     if ( reqHds.front().size() > 500 )
@@ -308,16 +246,11 @@ void    ReqHandler::parse_request()
     else if ( req.back() != "HTTP/1.1" )
         return( uri_depon_cs( 505 ) );
 
-    // get the server depending on headers and port number
 
     getFinalUri( req[1] );
     storeQuery();
-    // std::cerr << " path info : " << pathInfo << std::endl;
-    // std::cerr << " query     : " << query << std::endl;
-    // std::cerr << " uri       : " << request.uri << std::endl;
     if ( !checkUrirPath( request.uri ) || !dgbm( myServ.locations[loc_idx].root, request.uri ) )
         return ( uri_depon_cs( 403 ) );
-    std::cout << "\033[31m============================" << "concat uri : " << request.uri << "\033[0m" << std::endl;
     if ( request.method == "GET" )
         checkRetIdx(); 
     if ( request.method != "POST" )
@@ -327,34 +260,26 @@ void    ReqHandler::parse_request()
         if ( !endOfRead )
             pFileOpener();
     }
-    std::cout << "-------- request URI -----------" <<  request.uri << std::endl;
 }
 
 void    ReqHandler::nextBuff( char *buff, size_t bytes )// take the size returned by read()
 {
     (void)bytes;
     std::string myData( buff, bytes );
-    if ( request.method == "POST" )
+    if ( bodyStartFound )
     {
-        if ( bodyStartFound )
+        if ( pFile.is_open() )
         {
-            if ( pFile.is_open() )
-            {
-                if ( value == "chunked" )
-                    tChunked_post( myData );
-                else
-                    cLenght_post( myData );
-            }
-        }
-        else
-        {
-            countBodyBytes( myData );
-            pFileOpener();
+            if ( value == "chunked" )
+                tChunked_post( myData );
+            else
+                cLenght_post( myData );
         }
     }
     else
     {
-        std::cerr << " Request mehod != POST and still not responded need to check ???? " << std::endl;
+        countBodyBytes( myData );
+        pFileOpener();
     }
 }
 
@@ -362,11 +287,6 @@ void    ReqHandler::checkBuff( char *buff, size_t bytes )
 {
     std::string myData( buff , bytes );
     passedOnce = true;
-    std::cout << bytes << " bytes popopo" << std::endl;
-    std::cout << "in check buffer" << std::endl;
-    std::cout << " >> -*-*-*--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* << " << std::endl;
-    std::cout << "\033[31m" << myData << "\033[0m" << std::endl;
-    std::cout << " >> -*-*-*--*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* << " << std::endl;
     countBodyBytes( myData );
     std::istringstream src( non_body_str );
     std::string line;
@@ -389,13 +309,12 @@ ReqHandler::ReqHandler( std::vector<Serv> &_myServ )
     content_lenght = -1;
     bodyStartFound = false;
     endOfRead = 0;
-    std::cout << "---- IN reqhandler CONSTRUCTOR ----" << std::endl;
 }
 
 ReqHandler::~ReqHandler()
 { 
-    std::cout << "destructor requesthandler is called" << std::endl;
     if ( pFile.is_open() )
         pFile.close();
 }
-// ep->events[i].events & EPOLLERR || ep->events[i].events & EPOLLHUP || ep->events[i].events & EPOLLRDHUP
+
+ReqHandler::ReqHandler(){}

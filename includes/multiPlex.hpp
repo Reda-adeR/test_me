@@ -4,13 +4,9 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include <sys/epoll.h>
 #include <sys/wait.h>
 #include "reqHandler.hpp"
-#include <unistd.h>
-#include <fcntl.h>
-#include <map>
 #include "respBuilder.hpp"
 
 class Response;
@@ -21,7 +17,6 @@ class MultiPlexer {
         std::map<int, int>          serv_cli;
         std::map<int, sockaddr_in>  socknData;
     public:
-        // bool pipe_closed;
         MultiPlexer( std::vector<Serv> &servers );
         ~MultiPlexer();
         std::vector<Serv>    getServBySock( int sock, std::vector<Serv> &servers );
@@ -34,7 +29,7 @@ class MultiPlexer {
         int     spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &reqMap );
         int     spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &resMap, std::map<int, ReqHandler*> &reqMap );
 
-        std::string read_from_a_pipe(int fd, bool &pipe_closed, int &c_pid);
+        std::string read_from_a_pipe(int fd, bool &pipe_closed, int &c_pid, std::string &method);
 };
 
 #endif

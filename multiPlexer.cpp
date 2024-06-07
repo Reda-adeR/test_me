@@ -43,24 +43,16 @@ int MultiPlexer::existentSockForPort( int &nport )
 MultiPlexer::MultiPlexer( std::vector<Serv> &servers )
 {
     epollFd = epoll_create( servers.size() );
-    // std::cerr << " multi xxfd epoll : " << epollFd << std::endl;
 
     if ( epollFd == -1 )
         throw std::runtime_error( "Epoll creation failed");
     for ( std::vector<Serv>::iterator it = servers.begin() ; it != servers.end() ; it++ )
     {
-        // if ( !existentSockForPort( it->port ) )
-        // {
             int sock = socket( AF_INET, SOCK_STREAM, 0 );
             if ( sock == -1 )
                 throw std::runtime_error( "Socket creation failed");
-            // int f = fcntl(sock, F_GETFL, 0);
-            // if ( f == -1 )
-            //     throw std::runtime_error( "F_GETFL in fcntl failed");
-            // if ( fcntl(sock, F_SETFL, f | O_NONBLOCK) == -1)
-            //     throw std::runtime_error( "Failed to set socket to non block");
             int reuse = 1;
-            if ( setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse) ) == -1 )  // remove reuse port & add REUSEADDR
+            if ( setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse) ) == -1 )
                 throw std::runtime_error( "Failed to set socket option to REUSE");
             sockaddr_in servAdd;
             servAdd.sin_family = AF_INET;
@@ -70,10 +62,8 @@ MultiPlexer::MultiPlexer( std::vector<Serv> &servers )
                 throw std::runtime_error( "Failed to bind socket" );
             if ( listen( sock, SOMAXCONN ) == -1 )
                 throw std::runtime_error( "Failed to set socket to listen" );
-            std::cout << "server : " << it->servName << " listen to port : " << it->port << std::endl;
             socknData[sock] = servAdd;
             addSockToEpoll( sock );
-        // }
     }
 }
 
@@ -116,14 +106,9 @@ int MultiPlexer::spotIn( int fd, ReqHandler* obj, std::map<int, ReqHandler*> &re
         return 0;
     }
     if ( !obj->passedOnce )
-    {
         obj->checkBuff( buff, bytes );
-        std::cerr << obj->request.uri << std::endl;
-    }
     else
-    {   
         obj->nextBuff( buff, bytes );
-    }
     return 1;
 }
 
@@ -135,9 +120,6 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
     if ( itr == resMap.end() )
     {
         Response *rs = new Response( obj, fd, epollFd );
-        // rs->ep_fd = epollFd;
-        // std::cerr << "rs->ep_fd mult : "<< rs->ep_fd << std::endl;
-        // std::cerr << "************" << rs->endOfResp <<std::endl;
         resMap[fd] = rs;
     }
     else
@@ -150,13 +132,9 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
             if (itr->second->cgi_on)
             {
                 float timeOut = static_cast<float>(end - itr->second->cgi_start) / CLOCKS_PER_SEC;
-                
-                // if (WIFSIGNALED(itr->second->cgi_status))
-                //     std::cerr << "ERRRRRRRROR : " << strerror(errno) << std::endl;
-
                 if (itr->second->endOfCGI)
                     resp << itr->second->cgi_response();/*hena response akon dial cgi hadi atbedel*/
-                else if (timeOut > 4)
+                else if (timeOut > 10)
                 {
                     kill(itr->second->c_pid, SIGKILL);
                     waitpid(itr->second->c_pid, 0, 0);
@@ -174,13 +152,7 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
                 }
             }
             if (itr->second->cgi_on == false)
-            {
-                // std::cerr<<"folder : " << itr->second->folder <<std::endl;
                 resp << (itr->second->folder == false ? itr->second->read_from_a_file() : itr->second->list_folder());
-                // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
-                // std::cerr<<resp<<std::endl;
-                // std::cerr<<"+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*"<<std::endl;
-            }
             bytesSent = send( fd, resp.str().c_str(), resp.str().size(), 0);
         }
         if ( itr->second->endOfResp || (int)bytesSent == -1 )
@@ -198,32 +170,30 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
     return 1;
 }
 
-std::string     MultiPlexer::read_from_a_pipe(int fd, bool &pipe_closed, int &c_pid)
+std::string     MultiPlexer::read_from_a_pipe(int fd, bool &pipe_closed, int &c_pid, std::string &method)
 {
     std::stringstream response;
     const int chunkSize = 1024;
-    pipe_closed = false;
     char buffer[chunkSize + 1];
     memset(buffer, 0, chunkSize);
-    size_t bytesRead = read(fd, buffer, chunkSize);
-    // response << std::hex << bytesRead << "\r\n";
+    size_t bytesRead = 0;
+    pipe_closed = false;
+    (void)method;   
+    bytesRead = read(fd, buffer, chunkSize);
+   
     if (bytesRead)
         response.write(buffer, bytesRead);
     else
     {
         struct epoll_event ev;
-        std::cerr << "c_pid killed: "<< c_pid << std::endl;
         kill(c_pid, SIGKILL);
         waitpid(c_pid, 0, 0);
         ev.events = EPOLLIN;
         ev.data.fd = fd;
-        // std::cerr<<"fd " << ev.data.fd << std::endl;
-        // std::cerr<<"epollfd " << epollFd << std::endl;
         if ( epoll_ctl( epollFd, EPOLL_CTL_DEL, ev.data.fd, &ev ) == -1 )
-            std::cerr << "Error : " << strerror(errno) << std::endl;        // delSockFrEpoll(fd);
+            throw std::runtime_error("CGI execution failed");
         close(fd);
         pipe_closed = true;
-        // std::cerr<<pipe_closed<<std::endl;
     }
     return response.str();
 }
@@ -250,22 +220,37 @@ void    MultiPlexer::webServLoop( std::vector<Serv> &servers )
                 continue ;
             }
             std::map<int, ReqHandler*>::iterator it = reqMap.find( evs[i].data.fd );
-            // std::cerr << "checker : " << evs[i].data.fd << std::endl;
             if ( it == reqMap.end() )
             {
                 std::map<int, Response*>::iterator itr = resMap.begin();
                 for ( ; itr != resMap.end(); itr++)
                 {
-                    // std::cerr<<"--------------"<<std::endl;
                     if (itr->second->pipfd[0] == evs[i].data.fd)
                     {
-                        itr->second->cgi_data << read_from_a_pipe(evs[i].data.fd, itr->second->endOfCGI, itr->second->c_pid);
+                        try
+                        {
+                            itr->second->cgi_data << read_from_a_pipe(evs[i].data.fd, itr->second->endOfCGI, itr->second->c_pid, itr->second->req->request.method);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            struct stat statbuf;
+                            itr->second->req->uri_depon_cs(500);
+                            if ( access(itr->second->req->request.uri.c_str(), F_OK) )
+                                itr->second->req->uri_depon_cs( 404 );
+                            stat( itr->second->req->request.uri.c_str(), &statbuf );
+                            itr->second->cgi_data << "HTTP/1.1 " << itr->second->req->request.status << " OK\r\n";
+                            itr->second->cgi_data << "Content-Type: text/html\r\n";
+                            itr->second->cgi_data << "Content-Length: ";
+                            itr->second->cgi_data << statbuf.st_size;
+                            itr->second->cgi_data << "\r\n";
+                            itr->second->cgi_data << "\r\n";
+                        }
+                        
                         continue;
                     }
                 }
                 continue;
             }
-            // std::cerr << "enditr->second->endOfCGIOfCGI : " << std::endl;
             if ( evs[i].events & EPOLLIN && !it->second->endOfRead )
                 if ( !spotIn( evs[i].data.fd, it->second, reqMap ) )
                     continue;
