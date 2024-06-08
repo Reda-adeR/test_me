@@ -16,7 +16,7 @@ void    ReqHandler::isAllowed( s_location &loc, std::vector<std::string> &splite
     if ( (request.method == "GET" && loc.get == "off" )
         || (request.method == "POST" && loc.post == "off" )
         ||  (request.method == "DELETE" && loc.del == "off" ) )
-        uri_depon_cs( 403 );
+        uri_depon_cs( 405 );
     else
     {
         if ( !i )
@@ -138,6 +138,7 @@ void    ReqHandler::uri_depon_cs( int code )
     defErrP[414] = rp + "/errPages/err414.html";
     defErrP[500] = rp + "/errPages/err500.html";
     defErrP[501] = rp + "/errPages/err501.html";
+    defErrP[504] = rp + "/errPages/err504.html";
     defErrP[505] = rp + "/errPages/err505.html";
     defErrP[201] = rp + "/success.html";
 

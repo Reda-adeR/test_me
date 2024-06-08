@@ -249,7 +249,11 @@ void    ReqHandler::parse_request()
 
     getFinalUri( req[1] );
     storeQuery();
-    if ( !checkUrirPath( request.uri ) || !dgbm( myServ.locations[loc_idx].root, request.uri ) )
+    int a = checkUrirPath( request.uri );
+    int b = dgbm( myServ.locations[loc_idx].root, request.uri );
+    if ( request.status != 200 )
+        b = 1;
+    if ( !a || !b )
         return ( uri_depon_cs( 403 ) );
     if ( request.method == "GET" )
         checkRetIdx(); 

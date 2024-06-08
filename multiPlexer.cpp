@@ -139,9 +139,9 @@ int MultiPlexer::spotOut( int fd, ReqHandler* obj, std::map<int, Response*> &res
                     kill(itr->second->c_pid, SIGKILL);
                     waitpid(itr->second->c_pid, 0, 0);
                     struct stat statbuf;
-                    itr->second->req->uri_depon_cs(500);
+                    itr->second->req->uri_depon_cs(504);
                     stat( itr->second->req->request.uri.c_str(), &statbuf );
-                    resp << "HTTP/1.1 500 OK\r\n";
+                    resp << "HTTP/1.1 504 Gateway Timeout\r\n";
                     resp << "Content-Type: text/html\r\n";
                     resp << "Content-Length: ";
                     resp << statbuf.st_size;

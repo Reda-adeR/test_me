@@ -31,6 +31,7 @@ class Response {
         int cliSock;
         ReqHandler  *req;
         std::map<std::string, std::string> cType;
+        std::map<int, std::string> stat_code;
         Response( ReqHandler *_req, int _cliSock, int &ep_fd_ );
         ~Response();
         void    getMethod();

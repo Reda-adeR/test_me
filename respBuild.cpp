@@ -47,53 +47,74 @@ std::string     Response::list_folder()
 void    Response::env_init()
 {
     std::stringstream ss;
-    this->env = (char **)malloc(sizeof(char *) * 13);
+    std::stringstream ln;
     
-    std::string gatewayInterface = "GATEWAY_INTERFACE=CGI/1.1";/**/
-    std::string queryString      = "QUERY_STRING=";/**/
-    std::string redirectstatus   = "REDIRECT_STATUS=200";/**/
-    std::string requestMethod    = "REQUEST_METHOD=";/**/
-    std::string scriptName       = "SCRIPT_FILENAME=";/**/
-    std::string serverName       = "SERVER_NAME=localhost";/**/
-    std::string serverPort       = "SERVER_PORT=";/**/
-    std::string serverProtocol   = "SERVER_PROTOCOL=HTTP/1.1";/**/
-    std::string pathInfo         = "PATH_INFO=";/**/
-    std::string cookie           = "HTTP_COOKIE=";/**/
-     std::string contType         = "CONTENT_TYPE=";/**/
-    this->env[0] = strdup((requestMethod + req->request.method).c_str());/**/
-    this->env[1] = strdup((queryString + req->query).c_str());
-    this->env[2] = strdup((redirectstatus).c_str());
-    this->env[3] = strdup((scriptName + req->request.uri).c_str());
-    this->env[4] = strdup((serverName).c_str());/**/
-    this->env[5] = strdup((contType + req->cType).c_str());/**/
-    ss << serverPort << req->myServ.port;
-    this->env[6] = strdup(ss.str().c_str()); /**/  
-    this->env[7] = strdup((gatewayInterface).c_str());/**/
-    this->env[8] = strdup((serverProtocol).c_str());/**/
-    this->env[9] = strdup((pathInfo + req->pathInfo).c_str());/**/
-    this->env[10] = strdup((cookie + req->cookie).c_str());/**/
+    std::string gatewayInterface = "GATEWAY_INTERFACE=CGI/1.1";
+    std::string queryString      = "QUERY_STRING=";
+    std::string redirectstatus   = "REDIRECT_STATUS=200";
+    std::string requestMethod    = "REQUEST_METHOD=";
+    std::string scriptName       = "SCRIPT_FILENAME=";
+    std::string serverName       = "SERVER_NAME=localhost";
+    std::string serverPort       = "SERVER_PORT=";
+    std::string serverProtocol   = "SERVER_PROTOCOL=HTTP/1.1";
+    std::string pathInfo         = "PATH_INFO=";
+    std::string cookie           = "HTTP_COOKIE=";
+    std::string contentLength    = "CONTENT_LENGTH=";
+    std::string contentType      = "CONTENT_TYPE=";
+
+
     if (req->request.method == "POST")
     {
-        std::stringstream ln;
+        this->env = (char **)malloc(sizeof(char *) * 13);
         ln << req->content_lenght;
-        std::string contentLength    = "CONTENT_LENGTH=";
-        this->env[11] = strdup((contentLength + ln.str()).c_str());/**/
+        ss << serverPort << req->myServ.port;
+    
+        this->env[0] = strdup((requestMethod + req->request.method).c_str());
+        this->env[1] = strdup((queryString + req->query).c_str());
+        this->env[2] = strdup((redirectstatus).c_str());
+        this->env[3] = strdup((scriptName + req->request.uri).c_str());
+        this->env[4] = strdup((serverName).c_str());
+        this->env[5] = strdup(ss.str().c_str());   
+        this->env[6] = strdup((gatewayInterface).c_str());
+        this->env[7] = strdup((serverProtocol).c_str());
+        this->env[8] = strdup((pathInfo + req->pathInfo).c_str());
+        this->env[9] = strdup((cookie + req->cookie).c_str());
+        this->env[10] = strdup((contentLength + ln.str()).c_str());
+        this->env[11] = strdup((contentType + req->cType).c_str());
+        this->env[12] = NULL;
     }
-    else
-        this->env[11] = NULL;
-    this->env[12] = NULL;
+    else if (req->request.method == "GET")
+    {
+        this->env = (char **)malloc(sizeof(char *) * 11);
+        ss << serverPort << req->myServ.port;
+
+        this->env[0] = strdup((requestMethod + req->request.method).c_str());
+        this->env[1] = strdup((queryString + req->query).c_str());
+        this->env[2] = strdup((redirectstatus).c_str());
+        this->env[3] = strdup((scriptName + req->request.uri).c_str());
+        this->env[4] = strdup((serverName).c_str());
+        this->env[5] = strdup(ss.str().c_str());   
+        this->env[6] = strdup((gatewayInterface).c_str());
+        this->env[7] = strdup((serverProtocol).c_str());
+        this->env[8] = strdup((pathInfo + req->pathInfo).c_str());
+        this->env[9] = strdup((cookie + req->cookie).c_str());
+        this->env[10] = NULL;
+    }
+
 }
 
 void Response::child_proc()
 {
     char *str[3];
     struct epoll_event ev;
+    ev.events = EPOLLIN;
     ev.data.fd = pipfd[0];
     int g = epoll_ctl( ep_fd, EPOLL_CTL_ADD, pipfd[0], &ev );
     if (g == -1)
         throw std::runtime_error("CGI execution failed");
     close(pipfd[0]);
     dup2(pipfd[1], STDOUT_FILENO);
+    // dup2(pipfd[1], STDERR_FILENO);
     close(pipfd[1]);
     if (req->request.method == "POST")
     {
@@ -164,9 +185,18 @@ std::string  Response::cgi_response()
         response << "HTTP/1.1 ";
         if ( cgi_data.str().find("Status: ") != std::string::npos )
         {
-            response << cgi_data.str().substr(cgi_data.str().find("Status: ") + 8, 3) << "\r\n";
+            std::string stt = cgi_data.str().substr(cgi_data.str().find("Status: ") + 8, 3);
+            int end = cgi_data.str().find("\r\n") - (cgi_data.str().find("Status: ") + 11);
+            std::string st_c = cgi_data.str().substr(cgi_data.str().find("Status: ") + 11, end);
+
+            response << stt << " " << st_c << "\r\n";
             hdrs = cgi_data.str().substr(0, cgi_data.str().find("\r\n\r\n") + 4);
             response << hdrs;
+            if (stt == "500")
+            {
+                req->uri_depon_cs(500);
+                response << read_from_a_file();
+            }
             endOfResp = 1;
             return response.str();
         }
@@ -336,7 +366,7 @@ std::string Response::getHdResp()
     }
     if (req->request.status == 301)
     {
-        response << "HTTP/1.1 " << req->request.status << " Moved Permanently\r\n";
+        response << "HTTP/1.1 " << req->request.status << " " << stat_code[req->request.status] << "\r\n";
         response << "Location: " << req->myServ.locations[req->loc_idx].redirection;
         response << "\r\n\r\n";
         endOfResp = 1;
@@ -351,30 +381,34 @@ std::string Response::getHdResp()
         else if( statbuf.st_mode & S_IFREG )
         {
             folder = false;
-            if (is_cgi() == true && folder == false)
+            if (is_cgi() == true)
             {
                 cgi_on = true;
-                try
+                if (statbuf.st_mode & S_IXUSR)
                 {
-                    execute_cgi();
+                    try
+                    {
+                        execute_cgi();
+                    }
+                    catch(const std::exception& e)
+                    {
+                        struct stat statbuf;
+                        req->uri_depon_cs(500);
+                        if ( access(req->request.uri.c_str(), F_OK) )
+                            req->uri_depon_cs( 404 );
+                        stat( req->request.uri.c_str(), &statbuf );
+                        response << "HTTP/1.1 " << req->request.status << " " << stat_code[req->request.status] << "\r\n";
+                        response << "Content-Type: text/html\r\n";
+                        response << "Content-Length: ";
+                        response << statbuf.st_size;
+                        response << "\r\n";
+                        response << "\r\n";
+                        cgi_on = false;
+                        endOfResp = 0;
+                    }
                 }
-                catch(const std::exception& e)
-                {
-                    struct stat statbuf;
-                    req->uri_depon_cs(500);
-                    if ( access(req->request.uri.c_str(), F_OK) )
-                        req->uri_depon_cs( 404 );
-                    stat( req->request.uri.c_str(), &statbuf );
-                    response << "HTTP/1.1 " << req->request.status << " OK\r\n";
-                    response << "Content-Type: text/html\r\n";
-                    // response << "Content-Type: " << req->cType << "\r\n";
-                    response << "Content-Length: ";
-                    response << statbuf.st_size;
-                    response << "\r\n";
-                    response << "\r\n";
-                    cgi_on = false;
-                    endOfResp = 0;
-                }
+                else
+                    req->uri_depon_cs( 403 );
                 return response.str();
             }
         }
@@ -382,9 +416,8 @@ std::string Response::getHdResp()
     else
         req->uri_depon_cs( 403 );
     stat( req->request.uri.c_str(), &statbuf );
-    response << "HTTP/1.1 " << req->request.status << " OK\r\n";
-    response << "Content-Type: ";
-    response << get_file_ext(req->request.uri) << "\r\n";
+    response << "HTTP/1.1 " << req->request.status << " " << stat_code[req->request.status] << "\r\n";
+    response << "Content-Type: " << get_file_ext(req->request.uri) << "\r\n";
     if (folder)
         return response.str();
     response << "Content-Length: ";
@@ -449,6 +482,20 @@ Response::Response( ReqHandler *_req, int _cliSock, int &ep_fd_ )
     cType["woff2"] = "application/font-woff2";
     cType["eot"] = "application/vnd.ms-fontobject";
     cType["o"] = "application/octet-stream";
+
+    stat_code[400] = "Bad Request";
+    stat_code[403] = "Forbidden";
+    stat_code[404] = "Not Found";
+    stat_code[405] = "Method Not Allowed";
+    stat_code[408] = "Request Timeout";
+    stat_code[409] = "Conflict";
+    stat_code[411] = "Length Required";
+    stat_code[413] = "Payload Too Large";
+    stat_code[414] = "URI Too Long";
+    stat_code[500] = "Internal Server Error";
+    stat_code[501] = "Not Implemented";
+    stat_code[505] = "HTTP Version Not Supported";
+    stat_code[201] = "Created";
 
     getMethod();
 }

@@ -149,10 +149,10 @@ void        ReqHandler::tChunked_post( std::string &str )
         {
             int p = getPos( str );
             if ( p == -1 )
-                return ( uri_depon_cs( 500 ) );
+                return ( uri_depon_cs( 409 ) );
             chunk_size = getSize( str.substr( 0, p ) );
             if ( (int)chunk_size == -1 )
-                return ( uri_depon_cs( 500 ) );
+                return ( uri_depon_cs( 409 ) );
             if ( !chunk_size )
             {
                 std::string cgi = request.uri.substr(request.uri.rfind(".") + 1, request.uri.size());
